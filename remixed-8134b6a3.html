@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Möten CRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; }
+
+  .topbar { background: #fff; border-bottom: 1px solid #e5e5e2; padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
+  .topbar h1 { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .save-badge { font-size: 11px; color: #3b6d11; background: #eaf3de; padding: 3px 10px; border-radius: 12px; display: none; }
+  .save-badge.show { display: inline-block; }
+
+  .layout { display: flex; height: calc(100vh - 52px); }
+
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e5e5e2; padding: 16px 0; flex-shrink: 0; }
+  .sidebar-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 0 16px 8px; }
+  .month-btn { display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 13px; color: #555; border-left: 3px solid transparent; transition: all .1s; }
+  .month-btn:hover { background: #f5f5f3; color: #1a1a1a; }
+  .month-btn.active { color: #185fa5; background: #e6f1fb; border-left-color: #185fa5; font-weight: 500; }
+  .month-count { float: right; font-size: 11px; background: #e5e5e2; border-radius: 10px; padding: 1px 7px; color: #666; }
+  .month-btn.active .month-count { background: #b5d4f4; color: #0c447c; }
+
+  .sidebar-divider { border: none; border-top: 1px solid #e5e5e2; margin: 12px 0; }
+
+  .sidebar-action { display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 13px; color: #185fa5; font-weight: 500; }
+  .sidebar-action:hover { background: #f5f5f3; }
+
+  .main { flex: 1; overflow: auto; padding: 24px; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 200px; padding: 7px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; }
+  .search-input:focus { outline: none; border-color: #378add; box-shadow: 0 0 0 3px rgba(55,138,221,.1); }
+  .filter-select { padding: 7px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; }
+  .btn-new { padding: 7px 16px; background: #185fa5; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-new:hover { background: #0c447c; }
+
+  .stats-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card { background: #fff; border: 1px solid #e5e5e2; border-radius: 10px; padding: 12px 16px; min-width: 90px; }
+  .stat-val { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+  .stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+
+  .table-card { background: #fff; border: 1px solid #e5e5e2; border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e5e5e2; color: #888; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; background: #fafaf8; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0ee; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+
+  .co-name { font-weight: 500; color: #1a1a1a; }
+  .note-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #888; font-size: 12px; }
+  .date-cell { white-space: nowrap; color: #888; font-size: 12px; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .badge-mv { background: #e6f1fb; color: #0c447c; }
+  .badge-ak { background: #eaf3de; color: #27500a; }
+  .badge-klingan { background: #faeeda; color: #633806; }
+  .badge-po { background: #eeedfe; color: #3c3489; }
+  .badge-other { background: #f1efe8; color: #444441; }
+
+  .status-text { font-size: 12px; color: #555; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .row-actions { display: flex; gap: 4px; }
+  .btn-icon { padding: 4px 9px; font-size: 11px; border: 1px solid #e0e0dd; border-radius: 6px; cursor: pointer; background: #fff; color: #555; }
+  .btn-icon:hover { background: #f5f5f3; }
+  .btn-icon.danger:hover { background: #fcebeb; color: #a32d2d; border-color: #f09595; }
+
+  .empty-state { text-align: center; padding: 48px; color: #aaa; font-size: 14px; }
+
+  /* Modal overlay */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 24px; width: 540px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 8px 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: #1a1a1a;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #378add; box-shadow: 0 0 0 3px rgba(55,138,221,.1); }
+  .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e5e2; }
+  .btn-cancel { padding: 8px 18px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; color: #555; }
+  .btn-cancel:hover { background: #f5f5f3; }
+  .btn-save { padding: 8px 18px; background: #185fa5; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-save:hover { background: #0c447c; }
+
+  /* Detail modal */
+  .detail-table td { padding: 6px 0; vertical-align: top; }
+  .detail-table td:first-child { color: #888; width: 130px; font-size: 12px; }
+  .note-block { background: #f5f5f3; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin-top: 8px; color: #333; }
+
+  /* Export area */
+  .export-area { padding: 16px; }
+  .export-area p { font-size: 13px; color: #666; margin-bottom: 12px; }
+  .btn-export { padding: 8px 16px; background: #3b6d11; color: #fff; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+  .btn-export:hover { background: #27500a; }
+  .btn-import-label { display: inline-block; padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; cursor: pointer; background: #fff; color: #555; }
+  .btn-import-label:hover { background: #f5f5f3; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Möten CRM</h1>
+  <div class="topbar-right">
+    <span class="save-badge" id="save-badge">Sparad</span>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-label">Månader</div>
+    <div id="month-nav"></div>
+    <hr class="sidebar-divider">
+    <button class="sidebar-action" onclick="openNew()">+ Nytt möte</button>
+    <button class="sidebar-action" onclick="showExport()">Exportera data</button>
+    <button class="sidebar-action" onclick="document.getElementById('import-file').click()">Importera data</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+  </nav>
+
+  <main class="main" id="main"></main>
+</div>
+
+<!-- Form modal -->
+<div class="overlay" id="form-overlay">
+  <div class="modal" id="form-modal">
+    <h2 id="form-title">Nytt möte</h2>
+    <div class="form-grid" id="form-fields"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('form-overlay')">Avbryt</button>
+      <button class="btn-save" onclick="saveForm()">Spara möte</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="overlay" id="detail-overlay">
+  <div class="modal" id="detail-modal"></div>
+</div>
+
+<!-- Export modal -->
+<div class="overlay" id="export-overlay">
+  <div class="modal">
+    <h2>Exportera / Importera</h2>
+    <div class="export-area">
+      <p>Exportera all data som en JSON-fil som du kan spara som backup eller importera på en annan dator.</p>
+      <button class="btn-export" onclick="exportData()">Ladda ner JSON-backup</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('export-overlay')">Stäng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS = ['mars','april','maj','juni'];
+const ACCOUNTS = ['MV','AK','KLINGAN','PO','AK/MV'];
+const STATUSES = ['Offert skickad','Fått underlag','Inväntar State','Skickat inlog.','BOM','Mejlat inlog.','BOK','Mejlat info.','Skicka priser','Annat'];
+const STORAGE_KEY = 'crm-moten-desktop-v1';
+
+let state = { activeMonth: 'mars', filterText: '', filterAnsvarig: '', editId: null };
+
+function defaultData() {
+  return {
+    mars:[
+      {id:1,foretag:'MAPE PLASTICS AB',kontakt:'Robert Bengtsson',tfn:'033-41 70 34',mail:'robert@mapeplastics.se',ansvarig:'PO',status:'Offe',anteckning:'Patric skickat ut förslag. inväntar'},
+      {id:2,foretag:'EVOLAN PHARMA AB',kontakt:'Peter Nordberg',tfn:'08-54496030',mail:'peter.norberg@evolan.se',ansvarig:'AK',status:'Fått underlag',anteckning:'Nu räknar Karlsson på priser med GDP bilar och återkommer under veckan'},
+      {id:3,foretag:'NET INSIGHT AB',kontakt:'Marcus bång',tfn:'765350440',mail:'Marcusbang@netinsight.net',ansvarig:'MV',status:'Skickat inlog.',anteckning:'Skickat inlogg. Påminnelse per tfn inom en vecka gjord.'},
+      {id:4,foretag:'Letsdeliverit Sweden AB',kontakt:'Linus Ericsson',tfn:'704267357',mail:'Linus@letsdeliverit.se',ansvarig:'KLINGAN',status:'Inväntar State',anteckning:'Så fort vi får mer underlag prisar vi'},
+      {id:5,foretag:'SETRA GROUP AB',kontakt:'björn Kellberg',tfn:'22563590',mail:'bjorn.kellberg@setragroup.com',ansvarig:'MV',status:'BOM',anteckning:'Special (stora virkespartier), 10-15 sändningar i månaden.'},
+      {id:6,foretag:'Henkell Freixenet Sweden AB',kontakt:'Loreta Ruikaite',tfn:'46 73 644 82 09',mail:'loreta.ruikaite@henkell-freixenet.com',ansvarig:'AK',status:'Offert skickad',anteckning:'Karlsson har skickat offert. Inväntar testbokningar'},
+      {id:7,foretag:'DERMAROME STOCKHOLM AB',kontakt:'JONAS PETERZÉN',tfn:'0760-528 321',mail:'Jonas.peterzen@dermarome.se',ansvarig:'MV',status:'Offert skickad',anteckning:'1500 pall/år, 9k paket. Från Katrineholm. 99% B2B.'},
+      {id:8,foretag:'XL Bygg LEBE',kontakt:'Andreas',tfn:'',mail:'',ansvarig:'MV',status:'Inväntar BOKNINGAR',anteckning:'Ska börja boka mer och mer. Upp mot 1 sändning/dag (BUD).'},
+      {id:9,foretag:'Skivspecialisten i Stockholm AB',kontakt:'Bosse',tfn:'073-077 00 42',mail:'Bosse@skivspecialisten.se',ansvarig:'MV',status:'',anteckning:'15 sändningar. Problem med skymmande gods mot Gävle/Sandviken/Linköping.'},
+      {id:10,foretag:'Hydac AB',kontakt:'Johan Cleasson',tfn:'070-254 74 49',mail:'johan.claesson@hydac.se',ansvarig:'MV',status:'Skicka mail/PF',anteckning:'Bra möte. Skickar ut all info som behövs.'},
+      {id:11,foretag:'Karlholm logistics AB',kontakt:'Andreas Högberg',tfn:'070-719 88 53',mail:'Andreas@karlholm-logistics.se',ansvarig:'MV',status:'Inväntar Statistik',anteckning:'Intergrationsfrågor kring Zhipster. Följa upp om statistik!'},
+      {id:12,foretag:'Allient',kontakt:'Niklas Olofsson',tfn:'076-527 21 44',mail:'nicklas.olsson@allient.com',ansvarig:'AK',status:'',anteckning:'Bra möte men i rätt läge för att ta in ny leverantör'},
+      {id:13,foretag:'CA Mätsystem',kontakt:'Jonas Bodin',tfn:'08-50 52 68 04',mail:'jonas.bodin@camatsystem.com',ansvarig:'MV',status:'Offert skickad',anteckning:'Mejlat inloggning och priser. Påminnelse om ett par veckor.'},
+      {id:14,foretag:'Michelin',kontakt:'Patrik Oskarsson',tfn:'Växel',mail:'patrik.oskarsson@michelin.com',ansvarig:'MV',status:'Upphandling Q1-27',anteckning:'Lagt till oss för upphandling Q1 2027 för 2028.'},
+      {id:15,foretag:'Bioteria',kontakt:'Mikael Latvala',tfn:'070-878 00 24',mail:'mikael.latvala@bioteria.se',ansvarig:'MV',status:'Inlogg på plattformen',anteckning:'5 sändningar/vecka. Mejlat inlogg. Ringa om ett par veckor.'},
+      {id:16,foretag:'Borgstena of Sweden',kontakt:'Thomas Andersson',tfn:'033-22 23 61',mail:'thomas.andersson@borgstenaofsweden.se',ansvarig:'MV',status:'Demo digitalt efter påsk',anteckning:'DHL idag. 6400 sändningar/år. 90% paket, 10% pallat.'},
+      {id:17,foretag:'Perfecta Storkök AB',kontakt:'Jens Draböl',tfn:'070-362 64 30',mail:'jens@perfectastorkok.se',ansvarig:'MV',status:'Skickat inloggning',anteckning:'Bra möte. Fysiskt möte hos dom för att träffa delägare och säljare.'},
+      {id:18,foretag:'SKANSKA',kontakt:'Joakim Björkqvist',tfn:'Växel',mail:'joakim.bjorkqvist@skanska.se',ansvarig:'MV',status:'Mejlat sammanfattning',anteckning:'Intresserad av Simpels resa. Förslag om möte hos honom i GBG.'},
+      {id:19,foretag:'Poly-Produkter',kontakt:'Karl Birgander',tfn:'',mail:'karl.birgander@poly.se',ansvarig:'MV',status:'Skickat offert 23/3',anteckning:'Parti från Vårgårda. DHL idag, omsätter ca.2,5MSEK på transporterna.'},
+      {id:20,foretag:'Flinks Järn',kontakt:'Malin Gref',tfn:'08-131210',mail:'malin.gref@flinks.se',ansvarig:'MV',status:'Mejlat sammanfattning+inlog',anteckning:'Gillade plattformen men "måste" ha CO2 statistik.'},
+      {id:21,foretag:'Techster',kontakt:'Veronica',tfn:'076 3270597',mail:'veronica@techster.se',ansvarig:'MV',status:'Ny kontakt efter sommaren',anteckning:'Lagt in för ny kontakt efter sommaren.'},
+      {id:22,foretag:'Moet Hennessy',kontakt:'Magdalena Mineur',tfn:'08 545 724 20',mail:'Magdalena.mineur@moethennessy.com',ansvarig:'MV',status:'Mejla inlog. för bud',anteckning:'Några bud i månaden. Mejlat inlog 23/3.'},
+      {id:23,foretag:'Jan Comstedt AB',kontakt:'Petter Olsen',tfn:'031-775 65 27',mail:'petter@comstedt.se',ansvarig:'MV',status:'Nytt möte 15 sept 2026',anteckning:'Tänd på idén att byta ut DHL och PostNord. Ny lägesrapport i september.'},
+      {id:24,foretag:'SDO Energi',kontakt:'Erik Skeppar',tfn:'076-318 59 12',mail:'erik@sdoenergi.se',ansvarig:'MV',status:'Skicka pris',anteckning:'5-10 pallsändningar/vecka från Sthlm. Använder DSV idag.'},
+      {id:25,foretag:'PacsOn International AB',kontakt:'Christoffer Forsström',tfn:'08-68457061',mail:'christoffer.forsstrom@pacson.se',ansvarig:'MV',status:'Mejla inlog. som komplement',anteckning:'Jordbro till Sthlm och Mälardalen. Ny kontakt aug/sept.'},
+      {id:26,foretag:'Tree of Pets',kontakt:'Joni',tfn:'070-553 91 16',mail:'joni@treeofpets.se',ansvarig:'MV',status:'',anteckning:'3-7 trailers/dag PostNord. Behöver möte med Mattias (inköpsansvarig).'},
+      {id:27,foretag:'Alarmtech',kontakt:'Alexander Andersson',tfn:'08-798 18 64',mail:'alexander.andersson@alarmtech.se',ansvarig:'MV',status:'Mejlat inlog. Testar bud.',anteckning:'Sendify idag. Nästan bara pall.'},
+      {id:28,foretag:'ISO Partner',kontakt:'Jonas Claeson',tfn:'',mail:'jonas.claeson@isopartner.se',ansvarig:'MV',status:'Mejlat inlog.',anteckning:'8 filialer. Solna och Luleå använder TK-Logistik. Ringer efter påsk.'},
+      {id:29,foretag:'Primulator',kontakt:'Annika Söndüren',tfn:'073-760 36 60',mail:'annika@primulator.se',ansvarig:'MV',status:'Samuel skickat pris',anteckning:'Ringer henne efter påsk för att stämma av priser och framtid.'},
+      {id:30,foretag:'Team Tejbrant',kontakt:'Jesper Käll',tfn:'',mail:'jesper.kall@teamtejbrant.se',ansvarig:'MV',status:'',anteckning:'Busskurer från Hultsfred till hela Sverige. Schenker.'},
+      {id:31,foretag:'Scanflex Medical AB',kontakt:'John Dyrendahl',tfn:'08-54490959',mail:'john@scanflex.se',ansvarig:'MV',status:'Mejlat inlog för bud',anteckning:'Mest paket men även pall. Zendr idag.'},
+      {id:32,foretag:'Bonamat AB',kontakt:'Kostas Voutsinos',tfn:'',mail:'konstantinos.voutsinos@bonamat.com',ansvarig:'MV',status:'',anteckning:'DHL idag. 960 pallsändningar/år varav 700 halvpall ut från Täby.'},
+      {id:33,foretag:'Coats Industrial Scandinavia',kontakt:'Patrik Karlsson',tfn:'',mail:'patrik.karlsson@coats.com',ansvarig:'MV',status:'Mejlat inlog.',anteckning:'200 paketsändningar/mån, 25 pall/mån. Mest till Norge. Bring.'},
+      {id:34,foretag:'Beulco Armatur AB',kontakt:'Martin Håkansson',tfn:'',mail:'martin.hakansson@beulcoarmatur.se',ansvarig:'MV',status:'Mejlat förslag om inlog.',anteckning:'Paket, stycke, pall till grossister. DHL idag.'},
+      {id:35,foretag:'Insyn Scandinavia AB',kontakt:'Anna Ekblom',tfn:'',mail:'anna.ekblom@insyn.se',ansvarig:'MV',status:'Mejlat info.',anteckning:'Nästan bara paket från Växjö.'},
+      {id:36,foretag:'Stenborgs Truckar AB',kontakt:'Mia Boijort',tfn:'',mail:'mia.boijort@stenborgstruckar.se',ansvarig:'MV',status:'Mejlat inlog.',anteckning:'Paket, stycke, pall, parti. Vill testa bud inom Sthlm.'},
+    ],
+    april:[
+      {id:100,datum:'2026-04-01',foretag:'Kylma AB',kontakt:'Rickard Eghammar',tfn:'',mail:'rickard.eghammar@kylma.se',ansvarig:'MV',status:'Mailat inlog.',anteckning:'Paket, stycke, pallat, parti. Allt med PostNord. Testar oss på bud Sthlm.'},
+      {id:101,datum:'2026-04-08',foretag:'Metos Storkök AB',kontakt:'Mattias Forsberg',tfn:'',mail:'mattias.forsberg@metos.se',ansvarig:'MV',status:'Mailat info och förslag om inlog.',anteckning:'Import från Finland och Växjö. Upphandlas av Logenta.'},
+      {id:102,datum:'2026-04-17',foretag:'Wittur Sweden AB',kontakt:'Ali Hemmatian',tfn:'072 147 63 65',mail:'ali.hemmatian@wittur.com',ansvarig:'MV',status:'Mejlat inlog.',anteckning:'Kör import och inrikes med Zendr. Testar oss via portalen.'},
+      {id:103,datum:'2026-04-13',foretag:'Chemoform Scandinavia AB',kontakt:'Peter',tfn:'855922055',mail:'peter@chemoform.se',ansvarig:'MV',status:'Mejlat inlog+fråga om statistik',anteckning:'Pooler och poolartiklar. Sommar 30-40 pall/dag. Vill testa bud.'},
+      {id:104,datum:'2026-04-14',foretag:'Coolfors Sweden AB',kontakt:'George Cansu',tfn:'073 580 62 90',mail:'george@coolforssweden.se',ansvarig:'MV',status:'Mejllat inlog.',anteckning:'Kör inrikes idag med Ntex.'},
+      {id:105,datum:'2026-04-14',foretag:'Spendrups Bryggeriaktiebolag',kontakt:'Maria Brandström',tfn:'',mail:'maria.brandstrom@spendrups.se',ansvarig:'MV',status:'Mejlat info.',anteckning:'Första möte. Ny kontakt efter semestrarna.'},
+      {id:106,datum:'2026-04-08',foretag:'Viva Wine Group',kontakt:'Marcus Halvarsson',tfn:'',mail:'marcus.halvarsson@vivagroup.se',ansvarig:'AK',status:'BOK IMPORT EU',anteckning:'Import EU och övriga världen.'},
+      {id:107,datum:'2026-04-14',foretag:'Sterners Specialfabrik',kontakt:'Anders Englund',tfn:'',mail:'Anders.englund@sterners.se',ansvarig:'MV',status:'Mejlat inog.',anteckning:'Dala-Järna. Mest paket men även pall upp till 4,5 m. ca.1 MSEK i frakter.'},
+      {id:108,datum:'2026-04-28',foretag:'Handpicked Wines Sweden AB',kontakt:'Andrew Assaad',tfn:'076-050 26 45',mail:'andrew@handpicked.se',ansvarig:'AK',status:'',anteckning:'Import.'},
+      {id:109,datum:'2026-04-27',foretag:'LETSFACEIT NORDIC / Idun Minerals',kontakt:'Johan Sporre',tfn:'',mail:'Johan.sporre@idunminerals.com',ansvarig:'MV',status:'',anteckning:'15 pall/vecka, skickar även mycket med PostNord.'},
+      {id:110,datum:'2026-04-27',foretag:'Création Baumann Sweden AB',kontakt:'Eva-Lott Lydholm',tfn:'0708-499836',mail:'Eva-lott.lydholm@creationbaumann.se',ansvarig:'MV',status:'',anteckning:'Använder Schenker för det mesta.'},
+      {id:111,datum:'2026-04-28',foretag:'Ergonomic Office EO AB',kontakt:'Anna Lilja',tfn:'072-7442419',mail:'anna.lilja@ergonomicoffice.se',ansvarig:'MV',status:'',anteckning:'Stora transporter, fasta avtal med större aktörer.'},
+      {id:112,datum:'2026-04-17',foretag:'Supplies Direct Stockholm Länna AB',kontakt:'Claes Sunebring',tfn:'',mail:'Claes.sunebring@Suppliesdirect.se',ansvarig:'MV',status:'Mejlat om statistik.',anteckning:'Statistik för offert kommer v.17.'},
+      {id:113,datum:'2026-04-23',foretag:'Akzo Nobel Adhesives AB',kontakt:'Marie Björklund',tfn:'768314973',mail:'marie.bjorklund1@akzonobel.com',ansvarig:'KLINGAN',status:'',anteckning:'Både pall, gods – allt möjligt.'},
+      {id:114,datum:'2026-04-22',foretag:'DPJ Workspace AB',kontakt:'Benita Johansson',tfn:'08-4445424',mail:'Benita.johansson@dpj.se',ansvarig:'MV',status:'',anteckning:'1200 pall/styckegods i veckan, PostNord idag.'},
+      {id:115,datum:'2026-04-08',foretag:'Plamako i Anderstorp AB',kontakt:'Örjan Larsson',tfn:'070-546 79 55',mail:'orjan@plamako.se',ansvarig:'MV',status:'Ej intressant inrikes.',anteckning:'Import maskiner från Kina, Serbien, FR, IT, DE.'},
+      {id:116,datum:'2026-04-09',foretag:'GPA Flowsystem AB',kontakt:'Johan',tfn:'',mail:'js@gpa.se',ansvarig:'MV',status:'Skicka priser',anteckning:'10-15 pallsändningar/dag ut från Hjärnarp. 80% DHL, 20% DSV.'},
+      {id:117,datum:'2026-04-09',foretag:'Skandinavisk Kommunalteknik',kontakt:'Johan Eriksson',tfn:'',mail:'johan.eriksson@kommunalteknik.se',ansvarig:'MV',status:'Skickat inlog.',anteckning:'Bud i Sthlm och stycke/parti ut i landet. VA-rör till kommuner.'},
+      {id:118,datum:'2026-04-16',foretag:'Hotel Supply Scandinavia AB',kontakt:'Mikael',tfn:'',mail:'lager@hotelsupply.se',ansvarig:'MV',status:'Mejlat inlog. och priser',anteckning:'Enstaka halvpall/pall per dag ut från Falkenberg till hotell.'},
+      {id:119,datum:'2026-04-10',foretag:'Boon Edam Sweden AB',kontakt:'David Kolvik',tfn:'',mail:'david.kolvik@boonedam.com',ansvarig:'MV',status:'Mejlat inlog. och priser',anteckning:''},
+      {id:120,datum:'2026-04-15',foretag:'Belimo AB',kontakt:'Cathrine Nordkvist',tfn:'',mail:'cathrine.nordkvist@belimo.se',ansvarig:'MV',status:'Mejlat info.',anteckning:'Nacka. Nästan bara paket. Avtal med Schenker sedan 10 år. Upphandling i November.'},
+      {id:121,datum:'2026-04-15',foretag:'Bejoken AB',kontakt:'Pernilla Elfström',tfn:'',mail:'pernilla.elfstrom@bejoken.se',ansvarig:'MV',status:'Mejlat info.',anteckning:'Malmö. Bokar bara paket.'},
+      {id:122,datum:'2026-04-24',foretag:'Lagerservice i Nässjö',kontakt:'Andreas Hadejärd',tfn:'',mail:'andreas.hagejard@lagerservice.se',ansvarig:'KLINGAN',status:'',anteckning:'Kan ha terminalmöjligheter. 100 pall/mån.'},
+      {id:123,datum:'2026-04-13',foretag:'Beija / Nordiska Tunnan',kontakt:'Elin',tfn:'070-9996855',mail:'Elin@beija.com',ansvarig:'AK',status:'',anteckning:'Sjöfrakt intressant. Litauen till Sverige och EU. Flyg idag.'},
+      {id:124,datum:'2026-04-16',foretag:'Alcadon AB',kontakt:'Christian Fors',tfn:'070-7177781',mail:'CFO@Alca.se',ansvarig:'MV',status:'Mejlat info. Nytt möte sept',anteckning:'DSV och DHL idag. Gör egen upphandling i höst.'},
+      {id:125,datum:'2026-04-14',foretag:'RFSU Aktiebolag',kontakt:'Niklas Lindholm',tfn:'076 725 3313',mail:'niklas.lindholm@rfsu.com',ansvarig:'KLINGAN',status:'',anteckning:'Ca 50 pall/vecka från Hennan. Spela på miljö. HVO bilar.'},
+      {id:126,datum:'2026-04-16',foretag:'Desinase AB',kontakt:'Rickard',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:'Tyckte det lät intressant på utrikes ROAD.'},
+      {id:127,datum:'2026-04-23',foretag:'Loomis eStore AB',kontakt:'Mikael Ålund',tfn:'',mail:'mikael.alund@loomis.com',ansvarig:'AK/MV',status:'',anteckning:'Utrikes och Inrikes.'},
+      {id:128,datum:'2026-04-15',foretag:'Designsegel Sverige AB',kontakt:'Dan Poltrago',tfn:'073-9731450',mail:'dan@designsegel.se',ansvarig:'AK',status:'',anteckning:'Från Australien till Stockholm, styckegods. DHL idag.'},
+      {id:129,datum:'2026-04-17',foretag:'Nolek Aktiebolag',kontakt:'Michael Antoneski',tfn:'08-53194200',mail:'michael.antoneski@nolek.se',ansvarig:'AK',status:'',anteckning:'Ca 30 paket/vecka – mestadels export.'},
+      {id:130,datum:'2026-04-14',foretag:'Sevan',kontakt:'Faris Bahram',tfn:'',mail:'faris@sevan.se',ansvarig:'KLINGAN',status:'',anteckning:'Bra möte. 2500 pall/mån. Ska skicka pris och ledtider. Kör Fraktus/Jeeves/Nshift.'},
+      {id:131,datum:'2026-04-21',foretag:'Stacka AB',kontakt:'Eric Hallner',tfn:'',mail:'eric@stacka.se',ansvarig:'MV',status:'',anteckning:'Gävle till dagligvaruhandeln. 2000 pallsändningar/år. PostNord idag.'},
+      {id:132,datum:'2026-04-22',foretag:'Handels AB Skandivaror',kontakt:'Isabelle',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:'Polen trafik.'},
+      {id:133,datum:'2026-04-15',foretag:'KTR',kontakt:'Niklas',tfn:'',mail:'niklas.edholm@ktr.com',ansvarig:'KLINGAN',status:'',anteckning:'Nästan bara smått under 30 kg med Zendr. Import Italien-SE och Spanien-Norge.'},
+      {id:134,datum:'2026-04-14',foretag:'Sandatex Borås',kontakt:'Tommy Thuresson',tfn:'',mail:'Tommy@sandatex.se',ansvarig:'MV',status:'Mejlat inlog.',anteckning:'Avtal med DHL. Paket, stycke, parti. DHL dyra på parti.'},
+      {id:135,datum:'2026-04-15',foretag:'SGD Uppsala',kontakt:'Sandra Hagman',tfn:'',mail:'sandra.hagman@sgd.se',ansvarig:'KLINGAN',status:'',anteckning:'Intresserad att börja boka efter sommar.'},
+      {id:136,datum:'2026-04-15',foretag:'SGD Norrköping',kontakt:'Michail Giannoglou',tfn:'',mail:'michail.giannoglou@sgd.se',ansvarig:'KLINGAN',status:'',anteckning:'Börjar boka efter sommaren.'},
+      {id:137,datum:'2026-04-15',foretag:'Aratron',kontakt:'Rickard Henriks',tfn:'',mail:'rickard.henriks@aratron.se',ansvarig:'KLINGAN',status:'',anteckning:'Bra möte. Låst vid PLAR-avtal. Kontaktar dotterbolag. Nytt möte om 1 månad.'},
+      {id:138,datum:'2026-04-16',foretag:'Cipax AB',kontakt:'Pelle Kallin',tfn:'',mail:'per.kallin@cipax.com',ansvarig:'MV',status:'Mejlat info.',anteckning:'Övertygad om att vi inte kan utmana deras priser via Xano.'},
+      {id:139,datum:'2026-04-22',foretag:'PCB Connect Group',kontakt:'Johan Larsson',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:'Hongkong flyg.'},
+      {id:140,datum:'2026-04-27',foretag:'SIKAMA AKTIEBOLAG',kontakt:'Jimmy Pettersson',tfn:'',mail:'',ansvarig:'AK/MV',status:'',anteckning:'10+ pall/vecka. DHL idag. Ska ta med statistik.'},
+      {id:141,datum:'2026-04-28',foretag:'Alentec & Orion AB',kontakt:'Johan Norman',tfn:'+46 8-747 67 03',mail:'johan.norman@alentec.se',ansvarig:'MV',status:'PÅ PLATS',anteckning:'Fina volymer ca 12p/dag. Hatar DMT-tillägg. Integrerade till Nshift.'},
+      {id:142,datum:'2026-04-23',foretag:'b.n.t Scandinavia AB',kontakt:'Martin Wendt',tfn:'',mail:'mwe@bntscandinavia.com',ansvarig:'MV',status:'Mejlat info. Ringa sept',anteckning:'Oms. 7MSEK på frakter i Norden. Ca.50% SE. Upphandlar varje höst.'},
+      {id:143,datum:'2026-04-24',foretag:'Nordic Online Sales',kontakt:'NIKLAS',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:''},
+      {id:144,datum:'2026-04-29',foretag:'Arne Thuresson Byggmaterial AB',kontakt:'Malin',tfn:'08-7617440',mail:'male@thuresson.se',ansvarig:'KLINGAN',status:'',anteckning:'DHL hämtar pall dagligen. 30-40 pall/vecka.'},
+      {id:145,datum:'2026-04-29',foretag:'Scandinavian Steel Aktiebolag',kontakt:'Natasha Sahlen',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:'Europa från Rotterdam och övriga världen. Tradingföretag.'},
+      {id:146,datum:'2026-04-28',foretag:'Gourmand Stockholm AB',kontakt:'Ferat',tfn:'08-204009',mail:'ferat@gourmandstockholm.se',ansvarig:'MV',status:'',anteckning:'Stora transporter varje vecka. Taggad på samarbete på fasta router inrikes.'},
+      {id:147,datum:'2026-04-22',foretag:'ABC FÄRG',kontakt:'Erik',tfn:'',mail:'',ansvarig:'KLINGAN',status:'',anteckning:'Mycket halvpall.'},
+      {id:148,datum:'2026-04-28',foretag:'Batteriexpressen AB',kontakt:'Fredrik Hansen',tfn:'',mail:'',ansvarig:'MV',status:'PÅ PLATS I UPPLANDS VÄSBY',anteckning:'3-4 pall/dag. Schenker/DSV idag på systerbolagets avtal.'},
+      {id:149,datum:'2026-04-28',foretag:'Lazzat Foods AB',kontakt:'Sana',tfn:'',mail:'',ansvarig:'KLINGAN',status:'',anteckning:''},
+      {id:150,datum:'2026-04-28',foretag:'KGA',kontakt:'Simon',tfn:'',mail:'',ansvarig:'KLINGAN',status:'',anteckning:'3PL-leverantör åt Henkell. Fina volymer. Mycket EU-import.'},
+      {id:151,datum:'2026-04-28',foretag:'BTG Instruments AB',kontakt:'Magnus Röös',tfn:'',mail:'',ansvarig:'KLINGAN',status:'',anteckning:'Inrikes och utrikes flyg.'},
+    ],
+    maj:[
+      {id:200,datum:'2026-05-04',foretag:'Egant AB',kontakt:'Ulf Skarin',tfn:'46 (0)8 62 00 651',mail:'ulf.skarin@egant.se',ansvarig:'MV',status:'',anteckning:'Mest export.'},
+      {id:201,datum:'2026-05-21',foretag:'BODING SEGEL AKTIEBOLAG',kontakt:'Jonas',tfn:'070-309910',mail:'Jonas@boding.se',ansvarig:'AK/MV',status:'',anteckning:'Importerar bommar från Turkiet. Intressant med Forecast.'},
+      {id:202,datum:'2026-05-06',foretag:'Firefly AB',kontakt:'Cecilia Eriksson',tfn:'08-4492500',mail:'cecilia.eriksson@firefly.se',ansvarig:'KLINGAN',status:'',anteckning:'Pall+stycke+paket – PostNord idag + flera aktörer.'},
+      {id:203,datum:'2026-05-05',foretag:'Kakelspecialisten i Stockholm AB',kontakt:'Anton Ahman',tfn:'08-6860031',mail:'anton.ahman@kakelspecialisten.se',ansvarig:'KLINGAN',status:'',anteckning:'Ca 25 pall/dag + stycke/paket. PostNord.'},
+      {id:204,datum:'2026-05-04',foretag:'Insanto AB',kontakt:'Daria Trotsyuk',tfn:'08-6783635',mail:'dt@insanto.se',ansvarig:'MV',status:'',anteckning:'Ca 10 pall/stycke per vecka, PostNord idag.'},
+      {id:205,datum:'2026-05-04',foretag:'CI Chemical Instruments AB',kontakt:'Håkan Carlö',tfn:'070 834 30 10',mail:'hakan.c@ciab.se',ansvarig:'MV',status:'',anteckning:'Ca 15-20 stycke per vecka.'},
+      {id:206,datum:'2026-05-06',foretag:'Molander & Son Aktiebolag',kontakt:'Hubert Wojtyna',tfn:'072-387 19 76',mail:'hubbe@molanmders.se',ansvarig:'MV',status:'',anteckning:'10-15 stycke/vecka, DHL idag.'},
+      {id:207,datum:'2026-05-06',foretag:'Saga Access AB',kontakt:'Hans',tfn:'0708-669944',mail:'hans@sagaaccess.se',ansvarig:'MV',status:'',anteckning:'10-15 styckegods/vecka. 2 pall i mnd.'},
+      {id:208,datum:'2026-05-05',foretag:'Apparel Value Sweden AB',kontakt:'Eddie',tfn:'08-991639',mail:'eddie@nineteenproduction.com',ansvarig:'MV',status:'',anteckning:'Ca 50 (mest styckegods) per vecka.'},
+      {id:209,datum:'2026-05-05',foretag:'Aktiebolaget Wilhelm Seeman',kontakt:'Kim Nicklas Tuvesson',tfn:'08-6503255',mail:'info@seemann.nu',ansvarig:'MV',status:'',anteckning:'30-50 pall/stycke per vecka. DHL och flera.'},
+      {id:210,datum:'2026-05-12',foretag:'Punklight AB',kontakt:'Nicklas',tfn:'070-3337800',mail:'nicklas@punklight.com',ansvarig:'KLINGAN',status:'',anteckning:'Zendr/Zendify, DHL – 5-100 stycke/vecka.'},
+      {id:211,datum:'2026-05-11',foretag:'Holmquistsign AB',kontakt:'Alexander Hagelin',tfn:'',mail:'logistik@holmquistsign.se',ansvarig:'KLINGAN',status:'',anteckning:'Ca 30 sändningar/vecka – pall och stycke. Nshift. Vill ha bättre system.'},
+      {id:212,datum:'2026-05-11',foretag:'Skandjuice & Food AB',kontakt:'Nicklas Möller',tfn:'',mail:'niklas@skandjuice.se',ansvarig:'KLINGAN',status:'',anteckning:'Sjukt bra prospekt, blir större och större!'},
+      {id:213,datum:'2026-05-05',foretag:'Frepart Aktiebolag',kontakt:'Jessica',tfn:'',mail:'service@frepart.se',ansvarig:'MV',status:'',anteckning:'5-6 pall och 5-6 stycke/vecka. Inte supernöjd med nuvarande lösning.'},
+      {id:214,datum:'2026-05-07',foretag:'Ståhles Mining and Construction AB',kontakt:'Anders Ståhl VD',tfn:'',mail:'info@demolering.se',ansvarig:'AK',status:'',anteckning:'Import från Sydkorea, Italien m.fl. Sjö, flyg, helikopter, inrikes.'},
+      {id:215,datum:'2026-05-13',foretag:'Hi-ND Sweden AB',kontakt:'Henrik Rannelik',tfn:'',mail:'henrik.rannelik@hi-nd.com',ansvarig:'AK',status:'',anteckning:'Export/import från hela världen.'},
+      {id:216,datum:'2026-05-07',foretag:'Trygg Lek Sverige AB',kontakt:'Jack',tfn:'073-5055550',mail:'jack@trygglek.se',ansvarig:'AK',status:'',anteckning:'Importflöden från Portugal och Tyskland – fulla lastbilar.'},
+      {id:217,datum:'2026-05-04',foretag:'Anrin Nordic AB',kontakt:'Joakim',tfn:'076-8691200',mail:'joakim.nilsson@anrin.se',ansvarig:'KLINGAN',status:'',anteckning:'10-12 pall/vecka. Sendify med specialavtal.'},
+      {id:218,datum:'2026-05-05',foretag:'Skandinaviska Gasprodukter AB',kontakt:'Olivier Chastain',tfn:'87980055',mail:'olivier.chastain@gasprodukter.se',ansvarig:'KLINGAN',status:'',anteckning:'Pall, halvpall, paket, gaspaket. Mest inrikes. ADR/farligt gods.'},
+      {id:219,datum:'2026-05-06',foretag:'Pirtec - Piraya Technology AB',kontakt:'Björne',tfn:'',mail:'info@pirtec.se',ansvarig:'KLINGAN',status:'',anteckning:'Ca 10 pall/stycke/vecka i Sverige, skickar också utomlands.'},
+      {id:220,datum:'2026-05-06',foretag:'Avella Försäljning AB',kontakt:'Matilda',tfn:'073-0759013',mail:'matilda@avella.se',ansvarig:'KLINGAN',status:'',anteckning:'Ca 10 pall/vecka. Schenker idag.'},
+      {id:221,datum:'2026-05-07',foretag:'Weda AB',kontakt:'Ediba',tfn:'08-55032550',mail:'info@ediba.se',ansvarig:'KLINGAN',status:'',anteckning:'5 pall/vecka inrikes.'},
+      {id:222,datum:'2026-05-07',foretag:'Maskin AB A. Fransson',kontakt:'Kasper Reitsma',tfn:'',mail:'reservdelar@maskinfransson.se',ansvarig:'KLINGAN',status:'',anteckning:'Sendify/DHL. Mycket pall och stycke. Import också.'},
+      {id:223,datum:'2026-05-13',foretag:'Direktronik Aktiebolag',kontakt:'Therese Johansson',tfn:'08-52400700',mail:'therese.johansson@direktronik.se',ansvarig:'KLINGAN',status:'',anteckning:'Nshift inrikes. Ca 100 styckegods/dag! Import/export med DHL Express.'},
+      {id:224,datum:'2026-05-05',foretag:'Nordexia AB',kontakt:'Stefan Puzel',tfn:'739999936',mail:'stefan.puzel@nordexia.com',ansvarig:'KLINGAN',status:'',anteckning:'Nshift/TA-system.'},
+      {id:225,datum:'2026-05-07',foretag:'Camfil',kontakt:'Anders Dahlen',tfn:'',mail:'',ansvarig:'PO',status:'',anteckning:'Fina volymer, tyckte det lät intressant. Bring och DSV idag.'},
+      {id:226,datum:'2026-05-05',foretag:'Besafe Nordic AB',kontakt:'Andreas',tfn:'08-12050460',mail:'andreas@esafe.se',ansvarig:'KLINGAN',status:'',anteckning:'100 pall/vecka, mycket genom Zendr.'},
+      {id:227,datum:'2026-05-06',foretag:'CGT Metall Aktiebolag',kontakt:'Mårten Sammland',tfn:'070-717 6167',mail:'',ansvarig:'MV',status:'',anteckning:'På plats i Saltsjöbaden. Långgods med Schenker. Stål, långa rör.'},
+      {id:228,datum:'2026-05-05',foretag:'Northcone AB',kontakt:'Marcus Ekblom',tfn:'0705 86 66 00',mail:'marcus.ekblom@northcone.se',ansvarig:'KLINGAN',status:'',anteckning:'Partier och pall – stora volymer. Sendify idag.'},
+      {id:229,datum:'2026-05-07',foretag:'Masham AB',kontakt:'Masham',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:'Iran.'},
+      {id:230,datum:'2026-05-11',foretag:'Ståldepån i Stockholm AB',kontakt:'Larsa',tfn:'',mail:'Larsa@staldepan.se',ansvarig:'PO',status:'',anteckning:'Pall, styckegods och partier. Vill ha allt på en aktör.'},
+      {id:231,datum:'2026-05-06',foretag:'Södertörns Pumpservice AB',kontakt:'Johan',tfn:'',mail:'info@sodertorns.se',ansvarig:'AK',status:'',anteckning:'Import container från Turkiet. Beställer en till container inom 1 månad.'},
+      {id:232,datum:'2026-05-06',foretag:'Expolinc AB',kontakt:'',tfn:'',mail:'lager@expolinc.se',ansvarig:'MV',status:'',anteckning:'Sendify/Zendr. Ca 10-12 pall/vecka.'},
+    ],
+    juni:[
+      {id:300,datum:'2026-06-01',foretag:'HiKoki',kontakt:'Robert Cederfort',tfn:'',mail:'robert.cederfort@koki-group.com',ansvarig:'MV',status:'',anteckning:''},
+      {id:301,datum:'2026-06-02',foretag:'Swift lifts',kontakt:'Thomas Janelid',tfn:'',mail:'',ansvarig:'AK',status:'',anteckning:''},
+    ]
+  };
+}
+
+// --- Storage ---
+let data, nextId = 400;
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const d = JSON.parse(raw); data = d.data; nextId = d.nextId || 400; }
+    else { data = defaultData(); }
+  } catch(e) { data = defaultData(); }
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, nextId }));
+    const b = document.getElementById('save-badge');
+    b.classList.add('show');
+    setTimeout(() => b.classList.remove('show'), 1800);
+  } catch(e) {}
+}
+
+// --- Helpers ---
+function badgeClass(a) {
+  if (!a) return 'badge-other';
+  const v = a.toUpperCase();
+  if (v === 'MV') return 'badge-mv';
+  if (v === 'AK' || v === 'AK/MV') return 'badge-ak';
+  if (v === 'KLINGAN') return 'badge-klingan';
+  if (v === 'PO') return 'badge-po';
+  return 'badge-other';
+}
+
+function filtered() {
+  let rows = data[state.activeMonth] || [];
+  if (state.filterText) {
+    const q = state.filterText.toLowerCase();
+    rows = rows.filter(r =>
+      (r.foretag||'').toLowerCase().includes(q) ||
+      (r.kontakt||'').toLowerCase().includes(q) ||
+      (r.anteckning||'').toLowerCase().includes(q) ||
+      (r.status||'').toLowerCase().includes(q)
+    );
+  }
+  if (state.filterAnsvarig) rows = rows.filter(r => (r.ansvarig||'').toUpperCase() === state.filterAnsvarig);
+  return rows;
+}
+
+function allAnsvariga() {
+  const s = new Set();
+  Object.values(data).forEach(rows => rows.forEach(r => { if (r.ansvarig) s.add(r.ansvarig.toUpperCase()); }));
+  return [...s].sort();
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// --- Render ---
+function renderNav() {
+  const all = Object.values(data).flat().length;
+  document.getElementById('month-nav').innerHTML = MONTHS.map(m =>
+    `<button class="month-btn${state.activeMonth===m?' active':''}" onclick="setMonth('${m}')">
+      ${m.charAt(0).toUpperCase()+m.slice(1)}
+      <span class="month-count">${(data[m]||[]).length}</span>
+    </button>`
+  ).join('') + `<button class="month-btn${state.activeMonth==='alle'?' active':''}" onclick="setMonth('alle')">Alla månader <span class="month-count">${all}</span></button>`;
+}
+
+function renderMain() {
+  const all = Object.values(data).flat();
+  const rows = state.activeMonth === 'alle' ? filteredAll() : filtered();
+  const hasDatum = state.activeMonth !== 'mars';
+
+  const statsHTML = `<div class="stats-row">
+    <div class="stat-card"><div class="stat-val">${all.length}</div><div class="stat-lbl">Totalt möten</div></div>
+    ${MONTHS.map(m=>`<div class="stat-card"><div class="stat-val">${(data[m]||[]).length}</div><div class="stat-lbl">${m.charAt(0).toUpperCase()+m.slice(1)}</div></div>`).join('')}
+  </div>`;
+
+  const toolbarHTML = `<div class="toolbar">
+    <input class="search-input" type="text" placeholder="Sök företag, kontakt, anteckning..." value="${esc(state.filterText)}" oninput="setFilter(this.value)">
+    <select class="filter-select" onchange="setAnsvarig(this.value)">
+      <option value="">Alla ansvariga</option>
+      ${allAnsvariga().map(a=>`<option${state.filterAnsvarig===a?' selected':''}>${a}</option>`).join('')}
+    </select>
+    <button class="btn-new" onclick="openNew()">+ Nytt möte</button>
+  </div>`;
+
+  let tableHTML;
+  if (!rows.length) {
+    tableHTML = `<div class="table-card"><div class="empty-state">Inga möten matchar sökningen.</div></div>`;
+  } else {
+    tableHTML = `<div class="table-card"><table>
+      <thead><tr>
+        ${state.activeMonth==='alle'?'<th>Månad</th>':''}
+        ${hasDatum||state.activeMonth==='alle'?'<th>Datum</th>':''}
+        <th>Företag</th><th>Kontaktperson</th><th>Telefon</th><th>Ansvarig</th><th>Status</th><th>Anteckning</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr>
+          ${state.activeMonth==='alle'?`<td style="font-size:12px;color:#888">${r._month||''}</td>`:''}
+          ${hasDatum||state.activeMonth==='alle'?`<td class="date-cell">${r.datum||''}</td>`:''}
+          <td class="co-name">${esc(r.foretag)}</td>
+          <td>${esc(r.kontakt)}</td>
+          <td style="white-space:nowrap;font-size:12px">${esc(r.tfn)}</td>
+          <td><span class="badge ${badgeClass(r.ansvarig)}">${esc(r.ansvarig)}</span></td>
+          <td class="status-text">${esc(r.status)}</td>
+          <td><div class="note-cell" title="${esc(r.anteckning)}">${esc(r.anteckning)}</div></td>
+          <td><div class="row-actions">
+            <button class="btn-icon" onclick="showDetail(${r.id})">Visa</button>
+            <button class="btn-icon" onclick="openEdit(${r.id})">Redigera</button>
+            <button class="btn-icon danger" onclick="deleteRow(${r.id})">Ta bort</button>
+          </div></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  }
+
+  document.getElementById('main').innerHTML = statsHTML + toolbarHTML + tableHTML;
+}
+
+function filteredAll() {
+  let rows = [];
+  MONTHS.forEach(m => { (data[m]||[]).forEach(r => rows.push({...r, _month: m})); });
+  if (state.filterText) {
+    const q = state.filterText.toLowerCase();
+    rows = rows.filter(r => (r.foretag||'').toLowerCase().includes(q)||(r.kontakt||'').toLowerCase().includes(q)||(r.anteckning||'').toLowerCase().includes(q)||(r.status||'').toLowerCase().includes(q));
+  }
+  if (state.filterAnsvarig) rows = rows.filter(r => (r.ansvarig||'').toUpperCase() === state.filterAnsvarig);
+  return rows;
+}
+
+function render() { renderNav(); renderMain(); }
+
+// --- Actions ---
+function setMonth(m) { state.activeMonth = m; render(); }
+function setFilter(v) { state.filterText = v; renderMain(); }
+function setAnsvarig(v) { state.filterAnsvarig = v; renderMain(); }
+
+function showDetail(id) {
+  const row = Object.values(data).flat().find(r => r.id === id);
+  if (!row) return;
+  document.getElementById('detail-modal').innerHTML = `
+    <h2>${esc(row.foretag)}</h2>
+    <table class="detail-table" style="width:100%;margin-bottom:16px">
+      <tr><td>Kontaktperson</td><td>${esc(row.kontakt)||'–'}</td></tr>
+      <tr><td>Telefon</td><td>${esc(row.tfn)||'–'}</td></tr>
+      <tr><td>Mail</td><td style="color:#185fa5">${esc(row.mail)||'–'}</td></tr>
+      ${row.datum?`<tr><td>Datum</td><td>${esc(row.datum)}</td></tr>`:''}
+      <tr><td>Ansvarig</td><td><span class="badge ${badgeClass(row.ansvarig)}">${esc(row.ansvarig)||'–'}</span></td></tr>
+      <tr><td>Status</td><td>${esc(row.status)||'–'}</td></tr>
+    </table>
+    ${row.anteckning?`<div style="font-size:12px;color:#888;margin-bottom:6px">Anteckning</div><div class="note-block">${esc(row.anteckning)}</div>`:''}
+    <div class="modal-footer"><button class="btn-save" onclick="closeModal('detail-overlay')">Stäng</button></div>
+  `;
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function openNew() {
+  state.editId = null;
+  renderForm(null);
+  document.getElementById('form-overlay').classList.add('open');
+}
+
+function openEdit(id) {
+  state.editId = id;
+  const row = Object.values(data).flat().find(r => r.id === id);
+  renderForm(row);
+  document.getElementById('form-overlay').classList.add('open');
+}
+
+function renderForm(row) {
+  document.getElementById('form-title').textContent = row ? 'Redigera möte' : 'Nytt möte';
+  const hasDatum = state.activeMonth !== 'mars';
+  const r = row || {};
+  document.getElementById('form-fields').innerHTML = `
+    ${hasDatum?`<div class="form-group form-full"><label>Datum och tid</label><input type="text" id="f-datum" value="${esc(r.datum||'')}" placeholder="2026-06-10 1000"></div>`:''}
+    <div class="form-group form-full"><label>Företag *</label><input type="text" id="f-foretag" value="${esc(r.foretag||'')}"></div>
+    <div class="form-group"><label>Kontaktperson</label><input type="text" id="f-kontakt" value="${esc(r.kontakt||'')}"></div>
+    <div class="form-group"><label>Telefon</label><input type="text" id="f-tfn" value="${esc(r.tfn||'')}"></div>
+    <div class="form-group form-full"><label>Mail</label><input type="email" id="f-mail" value="${esc(r.mail||'')}"></div>
+    <div class="form-group"><label>Ansvarig (Account)</label>
+      <select id="f-ansvarig">
+        ${ACCOUNTS.map(a=>`<option${(r.ansvarig||'MV')===a?' selected':''}>${a}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Status</label>
+      <input type="text" id="f-status" value="${esc(r.status||'')}" list="status-list">
+      <datalist id="status-list">${STATUSES.map(s=>`<option>${s}</option>`).join('')}</datalist>
+    </div>
+    <div class="form-group form-full"><label>Anteckning</label><textarea id="f-anteckning">${esc(r.anteckning||'')}</textarea></div>
+  `;
+}
+
+function saveForm() {
+  const hasDatum = state.activeMonth !== 'mars';
+  const foretag = document.getElementById('f-foretag').value.trim();
+  if (!foretag) { alert('Fyll i företagsnamn.'); return; }
+  const row = {
+    foretag,
+    kontakt: document.getElementById('f-kontakt').value,
+    tfn: document.getElementById('f-tfn').value,
+    mail: document.getElementById('f-mail').value,
+    ansvarig: document.getElementById('f-ansvarig').value,
+    status: document.getElementById('f-status').value,
+    anteckning: document.getElementById('f-anteckning').value,
+    datum: hasDatum ? (document.getElementById('f-datum')||{value:''}).value : '',
+  };
+  const month = state.activeMonth === 'alle' ? 'mars' : state.activeMonth;
+  if (state.editId) {
+    let found = false;
+    MONTHS.forEach(m => {
+      const i = data[m].findIndex(r => r.id === state.editId);
+      if (i >= 0) { data[m][i] = {...data[m][i], ...row}; found = true; }
+    });
+  } else {
+    row.id = nextId++;
+    data[month].push(row);
+  }
+  closeModal('form-overlay');
+  saveData();
+  render();
+}
+
+function deleteRow(id) {
+  if (!confirm('Ta bort detta möte?')) return;
+  MONTHS.forEach(m => { data[m] = data[m].filter(r => r.id !== id); });
+  saveData();
+  render();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showExport() { document.getElementById('export-overlay').classList.add('open'); }
+
+function exportData() {
+  const blob = new Blob([JSON.stringify({data, nextId}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'moten-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importData(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (d.data && d.nextId) {
+        if (confirm('Ersätt all nuvarande data med importerad data?')) {
+          data = d.data; nextId = d.nextId;
+          saveData(); render();
+        }
+      } else { alert('Ogiltig fil.'); }
+    } catch(err) { alert('Kunde inte läsa filen.'); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+// Close overlay on bg click
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+loadData();
+render();
+</script>
+</body>
+</html>
