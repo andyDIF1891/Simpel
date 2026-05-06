@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Möten CRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; }
+  .topbar { background: #fff; border-bottom: 1px solid #e5e5e2; padding: 0 24px; height: 52px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 10; }
+  .topbar h1 { font-size: 16px; font-weight: 600; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .sync-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; display: none; }
+  .sync-badge.show { display: inline-block; }
+  .sync-badge.ok { background: #eaf3de; color: #3b6d11; }
+  .sync-badge.err { background: #fcebeb; color: #a32d2d; }
+  .sync-badge.loading { background: #e6f1fb; color: #0c447c; }
+  .layout { display: flex; height: calc(100vh - 52px); }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e5e5e2; padding: 16px 0; flex-shrink: 0; }
+  .sidebar-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 0 16px 8px; }
+  .month-btn { display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 13px; color: #555; border-left: 3px solid transparent; }
+  .month-btn:hover { background: #f5f5f3; color: #1a1a1a; }
+  .month-btn.active { color: #185fa5; background: #e6f1fb; border-left-color: #185fa5; font-weight: 500; }
+  .month-count { float: right; font-size: 11px; background: #e5e5e2; border-radius: 10px; padding: 1px 7px; color: #666; }
+  .month-btn.active .month-count { background: #b5d4f4; color: #0c447c; }
+  .sidebar-divider { border: none; border-top: 1px solid #e5e5e2; margin: 12px 0; }
+  .sidebar-action { display: block; width: 100%; text-align: left; padding: 8px 16px; border: none; background: none; cursor: pointer; font-size: 13px; color: #185fa5; font-weight: 500; }
+  .sidebar-action:hover { background: #f5f5f3; }
+  .main { flex: 1; overflow: auto; padding: 24px; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 200px; padding: 7px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; }
+  .search-input:focus { outline: none; border-color: #378add; box-shadow: 0 0 0 3px rgba(55,138,221,.1); }
+  .filter-select { padding: 7px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; background: #fff; }
+  .btn-new { padding: 7px 16px; background: #185fa5; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-new:hover { background: #0c447c; }
+  .stats-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card { background: #fff; border: 1px solid #e5e5e2; border-radius: 10px; padding: 12px 16px; min-width: 90px; }
+  .stat-val { font-size: 24px; font-weight: 600; }
+  .stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+  .table-card { background: #fff; border: 1px solid #e5e5e2; border-radius: 10px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e5e5e2; color: #888; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; background: #fafaf8; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0ee; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+  .co-name { font-weight: 500; }
+  .note-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #888; font-size: 12px; }
+  .date-cell { white-space: nowrap; color: #888; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .badge-mv { background: #e6f1fb; color: #0c447c; }
+  .badge-ak { background: #eaf3de; color: #27500a; }
+  .badge-klingan { background: #faeeda; color: #633806; }
+  .badge-po { background: #eeedfe; color: #3c3489; }
+  .badge-other { background: #f1efe8; color: #444; }
+  .status-text { font-size: 12px; color: #555; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-actions { display: flex; gap: 4px; }
+  .btn-icon { padding: 4px 9px; font-size: 11px; border: 1px solid #e0e0dd; border-radius: 6px; cursor: pointer; background: #fff; color: #555; }
+  .btn-icon:hover { background: #f5f5f3; }
+  .btn-icon.danger:hover { background: #fcebeb; color: #a32d2d; border-color: #f09595; }
+  .empty-state { text-align: center; padding: 48px; color: #aaa; }
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 24px; width: 540px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: #1a1a1a; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #378add; box-shadow: 0 0 0 3px rgba(55,138,221,.1); }
+  .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e5e2; }
+  .btn-cancel { padding: 8px 18px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; color: #555; }
+  .btn-cancel:hover { background: #f5f5f3; }
+  .btn-save { padding: 8px 18px; background: #185fa5; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-save:hover { background: #0c447c; }
+  .detail-table td { padding: 6px 0; vertical-align: top; }
+  .detail-table td:first-child { color: #888; width: 130px; font-size: 12px; }
+  .note-block { background: #f5f5f3; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin-top: 8px; color: #333; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>Möten CRM</h1>
+  <div class="topbar-right">
+    <span class="sync-badge" id="sync-badge">●</span>
+    <button class="btn-new" onclick="loadData()">↻ Uppdatera</button>
+  </div>
+</div>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-label">Månader</div>
+    <div id="month-nav"></div>
+    <hr class="sidebar-divider">
+    <button class="sidebar-action" onclick="openNew()">+ Nytt möte</button>
+  </nav>
+  <main class="main" id="main"><div class="empty-state">Laddar möten...</div></main>
+</div>
+<div class="overlay" id="form-overlay">
+  <div class="modal">
+    <h2 id="form-title">Nytt möte</h2>
+    <div class="form-grid" id="form-fields"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('form-overlay')">Avbryt</button>
+      <button class="btn-save" onclick="saveForm()">Spara</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="detail-overlay">
+  <div class="modal" id="detail-modal"></div>
+</div>
+<script>
+const URL = 'https://tahwecikznaomcppqadf.supabase.co/rest/v1/moten';
+const KEY = 'sb_publishable_00h3zWEEKJODRyJx0rfENw_jviRpjSv';
+const HEADERS = { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+const MONTHS = ['mars','april','maj','juni'];
+const ACCOUNTS = ['MV','AK','KLINGAN','PO','AK/MV'];
+const STATUSES = ['Offert skickad','Fått underlag','Inväntar State','Skickat inlog.','BOM','Mejlat inlog.','BOK','Mejlat info.','Skicka priser','Annat'];
+let allRows = [];
+let state = { activeMonth: 'mars', filterText: '', filterAnsvarig: '', editId: null };
+function badge(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'sync-badge show ' + type;
+  if (type !== 'loading') setTimeout(() => el.classList.remove('show'), 2500);
+}
+async function loadData() {
+  badge('sync-badge', '● Hämtar...', 'loading');
+  try {
+    const res = await fetch(URL + '?order=id.asc&limit=1000', { headers: HEADERS });
+    if (!res.ok) throw new Error(await res.text());
+    allRows = await res.json();
+    badge('sync-badge', '● Synkad', 'ok');
+    render();
+  } catch(e) { badge('sync-badge', '● Anslutningsfel', 'err'); }
+}
+function rowsForMonth(m) { return allRows.filter(r => (r.manad||'').toLowerCase() === m.toLowerCase()); }
+function filtered() {
+  let rows = state.activeMonth === 'alle' ? allRows : rowsForMonth(state.activeMonth);
+  if (state.filterText) { const q = state.filterText.toLowerCase(); rows = rows.filter(r => ['foretag','kontakt','anteckning','status'].some(k => (r[k]||'').toLowerCase().includes(q))); }
+  if (state.filterAnsvarig) rows = rows.filter(r => (r.ansvarig||'').toUpperCase() === state.filterAnsvarig);
+  return rows;
+}
+function allAnsvariga() { return [...new Set(allRows.map(r => (r.ansvarig||'').toUpperCase()).filter(Boolean))].sort(); }
+function badgeClass(a) { if (!a) return 'badge-other'; const v = a.toUpperCase(); if (v==='MV') return 'badge-mv'; if (v==='AK'||v==='AK/MV') return 'badge-ak'; if (v==='KLINGAN') return 'badge-klingan'; if (v==='PO') return 'badge-po'; return 'badge-other'; }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function renderNav() {
+  document.getElementById('month-nav').innerHTML = [...MONTHS,'alle'].map(m => {
+    const cnt = m==='alle' ? allRows.length : rowsForMonth(m).length;
+    const label = m==='alle' ? 'Alla månader' : m.charAt(0).toUpperCase()+m.slice(1);
+    return `<button class="month-btn${state.activeMonth===m?' active':''}" onclick="setMonth('${m}')">${label}<span class="month-count">${cnt}</span></button>`;
+  }).join('');
+}
+function renderMain() {
+  const rows = filtered(); const showMonth = state.activeMonth === 'alle';
+  const statsHTML = `<div class="stats-row"><div class="stat-card"><div class="stat-val">${allRows.length}</div><div class="stat-lbl">Totalt möten</div></div>${MONTHS.map(m=>`<div class="stat-card"><div class="stat-val">${rowsForMonth(m).length}</div><div class="stat-lbl">${m.charAt(0).toUpperCase()+m.slice(1)}</div></div>`).join('')}</div>`;
+  const toolbarHTML = `<div class="toolbar"><input class="search-input" type="text" placeholder="Sök företag, kontakt, anteckning..." value="${esc(state.filterText)}" oninput="setFilter(this.value)"><select class="filter-select" onchange="setAnsvarig(this.value)"><option value="">Alla ansvariga</option>${allAnsvariga().map(a=>`<option${state.filterAnsvarig===a?' selected':''}>${a}</option>`).join('')}</select><button class="btn-new" onclick="openNew()">+ Nytt möte</button></div>`;
+  const tableHTML = !rows.length ? `<div class="table-card"><div class="empty-state">Inga möten matchar sökningen.</div></div>` : `<div class="table-card"><table><thead><tr>${showMonth?'<th>Månad</th>':''}<th>Datum</th><th>Företag</th><th>Kontakt</th><th>Telefon</th><th>Ansvarig</th><th>Status</th><th>Anteckning</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr>${showMonth?`<td style="font-size:12px;color:#888">${esc(r.manad)}</td>`:''}<td class="date-cell">${esc(r.datum)||''}</td><td class="co-name">${esc(r.foretag)}</td><td>${esc(r.kontakt)}</td><td style="white-space:nowrap;font-size:12px">${esc(r.tfn)}</td><td><span class="badge ${badgeClass(r.ansvarig)}">${esc(r.ansvarig)}</span></td><td class="status-text">${esc(r.status)}</td><td><div class="note-cell" title="${esc(r.anteckning)}">${esc(r.anteckning)}</div></td><td><div class="row-actions"><button class="btn-icon" onclick="showDetail(${r.id})">Visa</button><button class="btn-icon" onclick="openEdit(${r.id})">Redigera</button><button class="btn-icon danger" onclick="deleteRow(${r.id})">Ta bort</button></div></td></tr>`).join('')}</tbody></table></div>`;
+  document.getElementById('main').innerHTML = statsHTML + toolbarHTML + tableHTML;
+}
+function render() { renderNav(); renderMain(); }
+function setMonth(m) { state.activeMonth = m; render(); }
+function setFilter(v) { state.filterText = v; renderMain(); }
+function setAnsvarig(v) { state.filterAnsvarig = v; renderMain(); }
+function showDetail(id) {
+  const r = allRows.find(x => x.id === id); if (!r) return;
+  document.getElementById('detail-modal').innerHTML = `<h2>${esc(r.foretag)}</h2><table class="detail-table" style="width:100%;margin-bottom:16px"><tr><td>Månad</td><td>${esc(r.manad)||'–'}</td></tr><tr><td>Datum</td><td>${esc(r.datum)||'–'}</td></tr><tr><td>Kontakt</td><td>${esc(r.kontakt)||'–'}</td></tr><tr><td>Telefon</td><td>${esc(r.tfn)||'–'}</td></tr><tr><td>Mail</td><td style="color:#185fa5">${esc(r.mail)||'–'}</td></tr><tr><td>Ansvarig</td><td><span class="badge ${badgeClass(r.ansvarig)}">${esc(r.ansvarig)||'–'}</span></td></tr><tr><td>Status</td><td>${esc(r.status)||'–'}</td></tr></table>${r.anteckning?`<div style="font-size:12px;color:#888;margin-bottom:6px">Anteckning</div><div class="note-block">${esc(r.anteckning)}</div>`:''}<div class="modal-footer"><button class="btn-save" onclick="closeModal('detail-overlay')">Stäng</button></div>`;
+  document.getElementById('detail-overlay').classList.add('open');
+}
+function openNew() { state.editId = null; renderForm(null); document.getElementById('form-overlay').classList.add('open'); }
+function openEdit(id) { state.editId = id; renderForm(allRows.find(r => r.id === id)); document.getElementById('form-overlay').classList.add('open'); }
+function renderForm(r) {
+  document.getElementById('form-title').textContent = r ? 'Redigera möte' : 'Nytt möte';
+  r = r || {};
+  const monthOpts = MONTHS.map(m => `<option${(r.manad||state.activeMonth||'mars')===m?' selected':''}>${m}</option>`).join('');
+  document.getElementById('form-fields').innerHTML = `<div class="form-group"><label>Månad</label><select id="f-manad">${monthOpts}</select></div><div class="form-group"><label>Datum</label><input type="text" id="f-datum" value="${esc(r.datum||'')}" placeholder="2026-06-10"></div><div class="form-group form-full"><label>Företag *</label><input type="text" id="f-foretag" value="${esc(r.foretag||'')}"></div><div class="form-group"><label>Kontaktperson</label><input type="text" id="f-kontakt" value="${esc(r.kontakt||'')}"></div><div class="form-group"><label>Telefon</label><input type="text" id="f-tfn" value="${esc(r.tfn||'')}"></div><div class="form-group form-full"><label>Mail</label><input type="email" id="f-mail" value="${esc(r.mail||'')}"></div><div class="form-group"><label>Ansvarig</label><select id="f-ansvarig">${ACCOUNTS.map(a=>`<option${(r.ansvarig||'MV')===a?' selected':''}>${a}</option>`).join('')}</select></div><div class="form-group"><label>Status</label><input type="text" id="f-status" value="${esc(r.status||'')}" list="status-list"><datalist id="status-list">${STATUSES.map(s=>`<option>${s}</option>`).join('')}</datalist></div><div class="form-group form-full"><label>Anteckning</label><textarea id="f-anteckning">${esc(r.anteckning||'')}</textarea></div>`;
+}
+async function saveForm() {
+  const foretag = document.getElementById('f-foretag').value.trim();
+  if (!foretag) { alert('Fyll i företagsnamn.'); return; }
+  const body = { manad: document.getElementById('f-manad').value, datum: document.getElementById('f-datum').value, foretag, kontakt: document.getElementById('f-kontakt').value, tfn: document.getElementById('f-tfn').value, mail: document.getElementById('f-mail').value, ansvarig: document.getElementById('f-ansvarig').value, status: document.getElementById('f-status').value, anteckning: document.getElementById('f-anteckning').value };
+  badge('sync-badge', '● Sparar...', 'loading');
+  try {
+    if (state.editId) { const res = await fetch(URL + '?id=eq.' + state.editId, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(body) }); if (!res.ok) throw new Error(await res.text()); }
+    else { const res = await fetch(URL, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) }); if (!res.ok) throw new Error(await res.text()); }
+    badge('sync-badge', '● Sparad', 'ok'); closeModal('form-overlay'); await loadData();
+  } catch(e) { badge('sync-badge', '● Fel vid sparning', 'err'); alert('Kunde inte spara: ' + e.message); }
+}
+async function deleteRow(id) {
+  if (!confirm('Ta bort detta möte?')) return;
+  badge('sync-badge', '● Tar bort...', 'loading');
+  try { const res = await fetch(URL + '?id=eq.' + id, { method: 'DELETE', headers: HEADERS }); if (!res.ok) throw new Error(await res.text()); badge('sync-badge', '● Borttagen', 'ok'); await loadData(); }
+  catch(e) { badge('sync-badge', '● Fel', 'err'); }
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); }));
+loadData();
+</script>
+</body>
+</html>
