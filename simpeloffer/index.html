@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpel Offer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:'Inter',sans-serif;
+  --brand-primary: #009688;
+  --brand-secondary: #00796B;
+}
+body{font-family:var(--font);min-height:100vh;background:linear-gradient(135deg,#00897B 0%,#00BFA5 50%,#1565c0 100%);display:flex;flex-direction:column}
+
+.header{padding:20px 32px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:20px;font-weight:800;color:#fff;letter-spacing:0.02em}
+.logo span{opacity:0.7;font-weight:400;font-size:14px;margin-left:8px}
+
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px}
+
+.hero{text-align:center;margin-bottom:48px}
+.hero-title{font-size:42px;font-weight:800;color:#fff;letter-spacing:-0.02em;margin-bottom:12px;line-height:1.1}
+.hero-sub{font-size:16px;color:rgba(255,255,255,0.75);max-width:480px;margin:0 auto;line-height:1.6}
+
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:900px;width:100%}
+
+@media(max-width:700px){
+  .cards{grid-template-columns:1fr}
+  .hero-title{font-size:28px}
+}
+
+.card{background:rgba(255,255,255,0.12);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:28px;cursor:pointer;text-decoration:none;transition:all 0.2s;display:flex;flex-direction:column}
+.card:hover{background:rgba(255,255,255,0.2);transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,0.2)}
+.card-icon{font-size:36px;margin-bottom:16px}
+.card-title{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}
+.card-desc{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;flex:1}
+.card-arrow{margin-top:20px;font-size:13px;color:rgba(255,255,255,0.6);display:flex;align-items:center;gap:6px;font-weight:500}
+
+.card.admin{background:rgba(255,255,255,0.95);border-color:transparent}
+.card.admin .card-title{color:#1a1a1a}
+.card.admin .card-desc{color:#666}
+.card.admin .card-arrow{color:#009688}
+
+.footer{padding:20px 32px;text-align:center;font-size:12px;color:rgba(255,255,255,0.5)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">SIMPEL <span>Offertportal</span></div>
+</div>
+
+<div class="main">
+  <div class="hero">
+    <div class="hero-title">Välkommen till<br>Simptra Offert</div>
+    <div class="hero-sub">Begär offert, besvara förfrågningar eller administrera hela flödet — välj din portal nedan.</div>
+  </div>
+
+  <div class="cards">
+
+    <!-- KUND -->
+    <a href="/offert.html" class="card">
+      <div class="card-icon">📦</div>
+      <div class="card-title">Kundportal</div>
+      <div class="card-desc">Begär offert för dina transporter och följ dina erbjudanden i realtid.</div>
+      <div class="card-arrow">Öppna kundportal →</div>
+    </a>
+
+    <!-- ADMIN -->
+    <a href="/admin-offert.html" class="card admin">
+      <div class="card-icon">⚙️</div>
+      <div class="card-title">Admin</div>
+      <div class="card-desc">Hantera förfrågningar, skicka till partners, justera priser och skicka erbjudanden till kunder.</div>
+      <div class="card-arrow">Öppna adminportal →</div>
+    </a>
+
+    <!-- PARTNER -->
+    <a href="/partner-offert.html" class="card">
+      <div class="card-icon">🤝</div>
+      <div class="card-title">Partnerportal</div>
+      <div class="card-desc">Se förfrågningar från Simptra och svara med era bästa priser direkt.</div>
+      <div class="card-arrow">Öppna partnerportal →</div>
+    </a>
+
+  </div>
+</div>
+
+<div class="footer">Simptra AB · simpeltransport.se</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Om Supabase skickar token hit — kolla roll och redirecta rätt
+(async () => {
+  const hash = window.location.hash;
+  if(!hash.includes('access_token') && !hash.includes('type=magiclink') && !hash.includes('type=recovery')) return;
+
+  const SB_URL = 'https://tahwecikznaomcppqadf.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E';
+  const sb = supabase.createClient(SB_URL, SB_KEY);
+
+  // Vänta på att sessionen etableras
+  let session = null;
+  for(let i = 0; i < 10; i++){
+    const { data } = await sb.auth.getSession();
+    if(data?.session){ session = data.session; break; }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if(!session){ window.location.href = '/offert.html'; return; }
+
+  const userId = session.user.id;
+  const token  = session.access_token;
+
+  try {
+    const resp = await fetch(SB_URL+'/rest/v1/user_roles?user_id=eq.'+userId+'&select=role', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+token }
+    });
+    const roles = await resp.json();
+    const roll  = roles?.[0]?.role;
+
+    console.log('Magic link redirect — roll:', roll, 'email:', session.user.email);
+
+    if(roll === 'partner')      window.location.href = '/partner-offert.html';
+    else if(roll === 'admin' || roll === 'säljare' || roll === 'ekonomi')
+                                 window.location.href = '/admin-offert.html';
+    else                         window.location.href = '/offert.html';
+  } catch(e) {
+    console.error('Roll-fetch misslyckades:', e);
+    window.location.href = '/offert.html';
+  }
+})();
+
+// Ladda branding
+
+// ===== BRANDING =====
+async function laddaBranding(){
+  try {
+    // Hämta tenant baserat på domän
+    const domän = window.location.hostname;
+    const resp = await fetch('https://tahwecikznaomcppqadf.supabase.co/rest/v1/tenants?domän=eq.'+encodeURIComponent(domän)+'&select=*&limit=1', {
+      headers: {'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E'}
+    });
+    const data = await resp.json();
+    const tenant = data?.[0];
+    if(!tenant) return; // Fallback till default Simptra-branding
+
+    const p1 = '#' + (tenant.primär_färg || '009688');
+    const p2 = '#' + (tenant.sekundär_färg || '00796B');
+    const logoText = tenant.logo_text || 'SIMPTRA';
+    const portalTitel = tenant.portal_titel || 'Offertportal';
+    const footerText = tenant.footer_text || 'simpeltransport.se';
+
+    // Applicera CSS-variabler
+    document.documentElement.style.setProperty('--brand-primary', p1);
+    document.documentElement.style.setProperty('--brand-secondary', p2);
+
+    // Uppdatera gradient-bakgrund
+    document.body.style.background = `linear-gradient(135deg, ${p1} 0%, ${p2} 60%, #1565c0 100%)`;
+
+    // Uppdatera logotyp-text
+    document.querySelectorAll('.logo, .modal-logo, .header-logo').forEach(el => {
+      if(el.classList.contains('logo')) el.innerHTML = logoText + ' <span>' + portalTitel + '</span>';
+      else el.textContent = logoText;
+    });
+
+    // Uppdatera sidtitel
+    document.title = logoText + ' — ' + portalTitel;
+
+    // Uppdatera footer
+    document.querySelectorAll('.footer').forEach(el => { el.textContent = tenant.namn + ' · ' + footerText; });
+
+    // Uppdatera hero-titel om den finns
+    const heroTitle = document.querySelector('.hero-title');
+    if(heroTitle) heroTitle.innerHTML = 'Välkommen till<br>' + logoText;
+
+    // Spara tenant_id i sessionStorage för användning i andra anrop
+    sessionStorage.setItem('tenant_id', tenant.id);
+    sessionStorage.setItem('tenant_namn', tenant.namn);
+
+  } catch(e) { console.warn('Branding kunde inte laddas:', e); }
+}
+
+laddaBranding();
+</script>
+</body>
+</html>

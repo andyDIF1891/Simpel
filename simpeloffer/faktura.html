@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Faktura — Simptra AB</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f0eb;--surface:#ffffff;--surface2:#f5f5f0;
+  --border:#e8e8e2;--border2:#d8d8d0;
+  --text:#1a1a1a;--muted:#888;
+  --accent:#009688;--accent2:#00796B;--warn:#f59e0b;--red:#ef4444;
+  --font:'Inter',sans-serif;--mono:'DM Mono',monospace;
+  --shadow:0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.12);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:linear-gradient(135deg,#00897B,#00BFA5);border-bottom:none;height:56px}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-logo{font-size:16px;font-weight:700;color:#fff;letter-spacing:0.02em}
+.header-sub{font-size:11px;color:rgba(255,255,255,0.75);font-family:var(--mono)}
+.header-nav{display:flex;gap:4px}
+.nav-tab{padding:7px 16px;border-radius:20px;font-size:13px;cursor:pointer;border:none;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);font-family:var(--font);transition:all 0.15s;font-weight:500}
+.nav-tab:hover{background:rgba(255,255,255,0.25);color:#fff}
+.nav-tab.active{background:#fff;color:var(--accent);font-weight:600}
+
+.page{display:none;padding:24px 28px;max-width:1100px}.page.active{display:block}
+
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:#555;transition:all 0.15s;font-weight:500}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:transparent;font-weight:600}
+.btn-primary:hover{background:var(--accent2)}
+.btn-purple{background:#f3e5f5;border-color:#ce93d8;color:#7b1fa2}
+.btn-purple:hover{background:#e1bee7}
+.btn-green{background:#e0f2f1;border-color:#b2dfdb;color:var(--accent)}
+.btn-green:hover{background:#b2dfdb}
+.btn-red{color:#c62828;border-color:#ffcdd2;background:#ffebee}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px;box-shadow:var(--shadow)}
+.card-header{padding:13px 16px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#777;display:flex;align-items:center;justify-content:space-between;background:var(--surface2)}
+.card-body{padding:16px}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.stat-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;font-weight:600}
+.stat-value{font-size:22px;font-weight:700;color:var(--accent)}
+.stat-sub{font-size:11px;color:#999;margin-top:3px}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 14px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#777;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fffe}
+.table-footer{padding:9px 14px;border-top:1px solid var(--border);background:var(--surface2);font-size:11px;color:#888;font-family:var(--mono)}
+.empty-row{padding:36px;text-align:center;color:#bbb;font-size:13px}
+
+.badge{font-size:10px;padding:3px 9px;border-radius:20px;white-space:nowrap;font-weight:500}
+.badge-kund{background:#e8f5e9;color:#2e7d32}
+.badge-lev{background:#e0f2f1;color:#00695c}
+.badge-utkast{background:#fff8e1;color:#f57f17}
+.badge-skickad{background:#e3f2fd;color:#1565c0}
+.badge-betald{background:#e8f5e9;color:#2e7d32}
+
+.status-sel{appearance:none;background:none;border:none;cursor:pointer;font-family:var(--font);font-size:10px;padding:3px 9px;border-radius:20px;outline:none;font-weight:500}
+.status-sel.badge-utkast{background:#fff8e1;color:#f57f17}
+.status-sel.badge-skickad{background:#e3f2fd;color:#1565c0}
+.status-sel.badge-betald{background:#e8f5e9;color:#2e7d32}
+.status-sel option{background:#fff;color:#1a1a1a}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;color:#777;font-weight:500}
+.form-input,.form-select,.form-textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:all 0.15s;width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(0,150,136,0.1)}
+.form-textarea{resize:vertical;min-height:60px}
+.form-select option{background:#fff;color:#1a1a1a}
+
+/* UPLOAD */
+.upload-area{border:2px dashed var(--border2);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface2)}
+.upload-area:hover,.upload-area.drag{border-color:var(--accent);background:#e0f2f1}
+.upload-loaded{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#e0f2f1;border-radius:8px;border:1px solid #b2dfdb;margin-top:10px}
+
+/* ROWS */
+.row-grid{display:grid;grid-template-columns:1fr 70px 100px 80px 80px 32px;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);align-items:center}
+.row-header{background:var(--surface2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#777;padding:7px 12px}
+.row-input{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:100%}
+.row-input:focus{border-color:var(--accent);background:#fff}
+.row-select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:100%}
+.row-select option{background:#fff;color:#1a1a1a}
+.row-sum{font-family:var(--mono);font-size:12px;text-align:right;font-weight:500;color:var(--text)}
+
+/* TOTALS */
+.totals-box{background:var(--surface2);border-radius:10px;padding:16px;width:260px;margin-left:auto;border:1px solid var(--border)}
+.total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#777}
+.total-row.main{font-size:16px;font-weight:700;color:var(--text);padding-top:12px;border-top:2px solid var(--border);margin-top:8px}
+.total-row span:last-child{font-family:var(--mono)}
+.total-row.main span:last-child{color:var(--accent)}
+
+/* AI */
+.ai-box{border-radius:10px;padding:14px;margin-top:10px;font-size:13px}
+.ai-loading{background:#f3e5f5;border:1px solid #ce93d8;color:#7b1fa2}
+.ai-done{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.ai-err{background:#ffebee;border:1px solid #ffcdd2;color:#c62828}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:800px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-hdr{padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
+.modal-title{font-size:15px;font-weight:600;color:var(--text)}
+.modal-close{background:none;border:none;color:#aaa;cursor:pointer;font-size:20px;padding:4px;line-height:1;border-radius:6px}
+.modal-close:hover{color:#555;background:var(--surface2)}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;background:var(--surface2);border-radius:0 0 16px 16px}
+
+/* PDF */
+.pdf-wrap{background:#fff;color:#111;border-radius:8px;padding:48px;font-family:'Inter',sans-serif;min-height:400px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);z-index:200;opacity:0;transform:translateY(8px);transition:all 0.25s;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.page{display:none;padding:24px 28px;max-width:1100px}.page.active{display:block}
+
+.btn{padding:7px 16px;border-radius:6px;font-size:13px;font-family:var(--font);cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text);transition:all 0.15s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#000;border-color:transparent;font-weight:600}
+.btn-primary:hover{background:#22c55e}
+.btn-purple{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:#a78bfa}
+.btn-purple:hover{background:rgba(167,139,250,0.2)}
+.btn-green{background:rgba(74,222,128,0.1);border-color:rgba(74,222,128,0.3);color:var(--accent)}
+.btn-green:hover{background:rgba(74,222,128,0.2)}
+.btn-red{color:var(--red);border-color:rgba(248,113,113,0.3)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:16px}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;font-family:var(--mono)}
+.stat-value{font-size:20px;font-weight:600}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+table{width:100%;border-collapse:collapse}
+th{padding:9px 12px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.table-footer{padding:8px 12px;border-top:1px solid var(--border);background:var(--surface2);font-size:11px;color:var(--muted);font-family:var(--mono)}
+.empty-row{padding:32px;text-align:center;color:var(--muted);font-size:12px}
+
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;white-space:nowrap;font-family:var(--mono)}
+.badge-kund{background:rgba(74,222,128,0.12);color:#4ade80}
+.badge-lev{background:rgba(34,211,238,0.12);color:#22d3ee}
+.badge-utkast{background:rgba(251,191,36,0.12);color:#fbbf24}
+.badge-skickad{background:rgba(34,211,238,0.12);color:#22d3ee}
+.badge-betald{background:rgba(74,222,128,0.12);color:#4ade80}
+
+.status-sel{appearance:none;background:none;border:none;cursor:pointer;font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:10px;outline:none}
+.status-sel.badge-utkast{background:rgba(251,191,36,0.12);color:#fbbf24}
+.status-sel.badge-skickad{background:rgba(34,211,238,0.12);color:#22d3ee}
+.status-sel.badge-betald{background:rgba(74,222,128,0.12);color:#4ade80}
+.status-sel option{background:#fff;color:#1a1a1a}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-family:var(--mono)}
+.form-input,.form-select,.form-textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.15s;width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent)}
+.form-textarea{resize:vertical;min-height:60px}
+.form-select option{background:#fff;color:#1a1a1a}
+
+/* UPLOAD */
+.upload-area{border:2px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s}
+.upload-area:hover,.upload-area.drag{border-color:var(--accent);background:rgba(74,222,128,0.04)}
+.upload-loaded{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;margin-top:10px}
+
+/* ROWS */
+.row-grid{display:grid;grid-template-columns:1fr 70px 100px 80px 80px 32px;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);align-items:center}
+.row-header{background:var(--surface2);font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding:7px 12px}
+.row-input{background:var(--surface);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:100%}
+.row-input:focus{border-color:var(--accent)}
+.row-select{background:var(--surface);border:1px solid var(--border2);border-radius:4px;padding:5px 8px;color:var(--text);font-family:var(--font);font-size:12px;outline:none;width:100%}
+.row-select option{background:#fff;color:#1a1a1a}
+.row-sum{font-family:var(--mono);font-size:12px;text-align:right}
+
+/* TOTALS */
+.totals-box{background:var(--surface2);border-radius:8px;padding:14px;width:260px;margin-left:auto}
+.total-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:var(--muted)}
+.total-row.main{font-size:15px;font-weight:600;color:var(--text);padding-top:10px;border-top:1px solid var(--border);margin-top:6px}
+.total-row span:last-child{font-family:var(--mono)}
+.total-row.main span:last-child{color:var(--accent)}
+
+/* AI STATUS */
+.ai-box{border-radius:8px;padding:14px;margin-top:10px;font-size:13px}
+.ai-loading{background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:#a78bfa}
+.ai-done{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2)}
+.ai-err{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);color:var(--red)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{display:inline-block;animation:spin 1s linear infinite}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:800px;max-width:96vw;max-height:92vh;overflow-y:auto}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+
+/* PDF preview */
+.pdf-wrap{background:#fff;color:#111;border-radius:8px;padding:48px;font-family:'Instrument Sans',sans-serif;min-height:400px}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--accent);border-radius:8px;padding:10px 18px;font-size:13px;z-index:200;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="header-logo">SIMPEL</div>
+      <div class="header-sub">Fakturor · Simptra AB</div>
+    </div>
+  </div>
+  <div class="header-nav">
+    <a href="/" style="padding:7px 16px;border-radius:20px;font-size:13px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);text-decoration:none;font-weight:500;display:flex;align-items:center;gap:6px;transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">← Bokningar</a>
+    <button class="nav-tab active" onclick="showPage('oversikt',this)">Översikt</button>
+    <button class="nav-tab" onclick="showPage('ny-lev',this)">+ Levfaktura</button>
+    <button class="nav-tab" onclick="showPage('ny-kund',this)">+ Kundfaktura</button>
+  </div>
+</div>
+
+<!-- ÖVERSIKT -->
+<div class="page active" id="page-oversikt">
+  <div class="stats-row">
+    <div class="stat"><div class="stat-label">Kundfakturor</div><div class="stat-value" id="s-kund" style="color:var(--accent)">–</div><div class="stat-sub" id="s-kund-sum">–</div></div>
+    <div class="stat"><div class="stat-label">Levfakturor</div><div class="stat-value" id="s-lev" style="color:var(--accent2)">–</div><div class="stat-sub" id="s-lev-sum">–</div></div>
+    <div class="stat"><div class="stat-label">Marginal</div><div class="stat-value" id="s-marg" style="color:var(--accent)">–</div><div class="stat-sub">Kund minus lev</div></div>
+    <div class="stat"><div class="stat-label">Utkast</div><div class="stat-value" id="s-utkast" style="color:var(--warn)">–</div><div class="stat-sub">Ej skickade</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Alla fakturor</span>
+      <div style="display:flex;gap:8px">
+        <select class="form-select" style="padding:4px 10px;font-size:12px;width:auto" onchange="renderOversikt()" id="f-filter-typ">
+          <option value="">Alla typer</option><option value="kund">Kundfakturor</option><option value="lev">Levfakturor</option>
+        </select>
+        <select class="form-select" style="padding:4px 10px;font-size:12px;width:auto" onchange="renderOversikt()" id="f-filter-status">
+          <option value="">Alla statusar</option><option value="utkast">Utkast</option><option value="skickad">Skickad</option><option value="betald">Betald</option>
+        </select>
+        <button onclick="exporteraExcel()" style="background:#009688;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📥 Excel</button>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin:0;border:none;border-radius:0">
+      <table><thead><tr>
+        <th>Nr</th><th>Typ</th><th>Till</th><th>Datum</th><th>Förfaller</th>
+        <th>Netto</th><th>Moms</th><th>Totalt</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody id="tbody-oversikt"></tbody></table>
+      <div class="table-footer" id="info-oversikt">–</div>
+    </div>
+  </div>
+</div>
+
+<!-- NY LEVFAKTURA -->
+<div class="page" id="page-ny-lev">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- LEFT: upload + AI -->
+    <div>
+      <div class="card">
+        <div class="card-header">Steg 1 — Ladda upp levfaktura</div>
+        <div class="card-body">
+          <div class="upload-area" id="upload-area" onclick="document.getElementById('lev-fil').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="dropFil(event)">
+            <div style="font-size:32px;margin-bottom:8px">📄</div>
+            <div style="font-size:13px;font-weight:500;margin-bottom:4px">Dra PDF eller bild hit</div>
+            <div style="font-size:11px;color:var(--muted)">eller klicka för att välja</div>
+            <input type="file" id="lev-fil" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="filVald(this.files[0])">
+          </div>
+
+          <div id="fil-info" style="display:none">
+            <div class="upload-loaded" style="margin-top:10px">
+              <span style="font-size:20px">📄</span>
+              <span id="fil-namn" style="flex:1;font-size:13px;font-weight:500"></span>
+              <button onclick="rensaFil()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px">✕</button>
+            </div>
+            <button onclick="lasAvMedAI()" id="btn-ai" class="btn btn-purple" style="width:100%;margin-top:10px;padding:11px;font-size:13px">
+              🤖 Läs av faktura med AI
+            </button>
+          </div>
+
+          <div id="ai-status" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Steg 2 — Granska &amp; spara</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Leverantör</label>
+            <input class="form-input" id="lev-leverantor" placeholder="Leverantörens namn">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label class="form-label">Levfakturanr</label>
+              <input class="form-input" id="lev-nr" placeholder="Fakturanummer">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Datum</label>
+              <input type="date" class="form-input" id="lev-datum">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Förfallodatum</label>
+              <input type="date" class="form-input" id="lev-forfaller">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Referens/PO</label>
+              <input class="form-input" id="lev-ref" placeholder="Er referens">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:4px">
+            <label class="form-label">Koppla till bokning (valfritt)</label>
+            <select class="form-input" id="lev-bokning-id" style="font-size:12px">
+              <option value="">— Välj bokning —</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button onclick="sparaLev('utkast')" class="btn" style="flex:1;border-color:rgba(251,191,36,0.3);color:var(--warn)">Spara utkast</button>
+            <button onclick="sparaLev('betald')" class="btn btn-primary" style="flex:1">Spara &amp; betald</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: rows + totals + skapa kund -->
+    <div>
+      <div class="card">
+        <div class="card-header">
+          <span>Fakturarader</span>
+          <button onclick="laggTillRad('lev')" class="btn" style="font-size:11px;padding:3px 10px">+ Rad</button>
+        </div>
+        <div>
+          <div class="row-grid row-header">
+            <span>Beskrivning</span><span>Antal</span><span>À-pris</span><span>Moms</span><span style="text-align:right">Summa</span><span></span>
+          </div>
+          <div id="lev-rader"></div>
+        </div>
+        <div class="card-body" style="padding-top:12px">
+          <div class="totals-box">
+            <div class="total-row"><span>Netto</span><span id="lev-tot-netto">0 kr</span></div>
+            <div class="total-row"><span>Moms</span><span id="lev-tot-moms">0 kr</span></div>
+            <div class="total-row main"><span>Totalt</span><span id="lev-tot-total">0 kr</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Steg 3 — Skapa kundfaktura</div>
+        <div class="card-body">
+          <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.6">Kopiera raderna till en kundfaktura. Du väljer kund och justerar priserna.</p>
+          <button onclick="skapaBokning()" class="btn" style="background:#e3f2fd;border-color:#90caf9;color:#1565c0;width:100%;padding:10px;font-size:13px;font-weight:500;margin-bottom:8px">
+            📦 Skapa bokning i bokningssystemet
+          </button>
+          <button onclick="skapaKundFranLev()" class="btn btn-green" style="width:100%;padding:11px;font-size:13px;font-weight:500">
+            ✨ Skapa kundfaktura från denna levfaktura
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NY KUNDFAKTURA -->
+<div class="page" id="page-ny-kund">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- LEFT: från + till -->
+    <div>
+      <div class="card">
+        <div class="card-header">Från (Simptra AB)</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div class="form-group"><label class="form-label">Företagsnamn</label><input class="form-input" id="k-from-name" value="Simptra AB"></div>
+          <div class="form-group"><label class="form-label">Org.nr</label><input class="form-input" id="k-from-org" value="559355-0964"></div>
+          <div class="form-group"><label class="form-label">Adress</label><input class="form-input" id="k-from-addr" value="Glödlampsgränd 4, 120 31 Stockholm"></div>
+          <div class="form-group"><label class="form-label">Momsreg.nr</label><input class="form-input" id="k-from-momsreg" value="SE559355096401"></div>
+          <div class="form-group"><label class="form-label">Bankgiro</label><input class="form-input" id="k-from-bg" value="5824-2520"></div>
+          <div class="form-group"><label class="form-label">IBAN</label><input class="form-input" id="k-from-iban" value="SE94 5000 0000 0500 4117 4151"></div>
+          <div class="form-group"><label class="form-label">BIC/SWIFT</label><input class="form-input" id="k-from-bic" value="ESSESESS"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-header">Till (kund)</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div class="form-group"><label class="form-label">Kund</label>
+            <!-- Hidden value holder -->
+            <input type="hidden" id="k-to-name">
+            <div style="position:relative">
+              <input class="form-input" id="k-to-name-display" placeholder="Sök eller välj kund..." autocomplete="off"
+                oninput="filterKundDropdown(this.value)"
+                onfocus="visaKundDropdown()"
+                onblur="setTimeout(()=>document.getElementById('kund-dropdown').style.display='none',200)"
+                style="cursor:pointer">
+              <div id="kund-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--accent);border-radius:8px;box-shadow:var(--shadow-md);z-index:99;max-height:220px;overflow-y:auto;margin-top:2px"></div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Org.nr</label><input class="form-input" id="k-to-org" placeholder="556xxx-xxxx"></div>
+          <div class="form-group full"><label class="form-label">Adress</label><input class="form-input" id="k-to-addr" placeholder="Gatan 1, 111 11 Stockholm"></div>
+          <div class="form-group"><label class="form-label">Kontaktperson</label><input class="form-input" id="k-to-contact" placeholder="Förnamn Efternamn"></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="k-to-email" placeholder="faktura@kund.se"></div>
+          <div class="form-group"><label class="form-label">Er referens / PO</label><input class="form-input" id="k-to-ref" placeholder="PO-nummer eller referens"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group"><label class="form-label">Fakturanr</label><input class="form-input" id="k-nr" placeholder="F-0001"></div>
+            <div class="form-group"><label class="form-label">Datum</label><input type="date" class="form-input" id="k-datum"></div>
+            <div class="form-group"><label class="form-label">Förfaller</label><input type="date" class="form-input" id="k-forfaller"></div>
+            <div class="form-group">
+              <label class="form-label">Betalvillkor</label>
+              <select class="form-select" id="k-villkor" onchange="uppdateraForfall()">
+                <option value="30">30 dagar netto</option>
+                <option value="15">15 dagar netto</option>
+                <option value="10">10 dagar netto</option>
+                <option value="0">Omgående</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Meddelande</label><textarea class="form-textarea" id="k-notes" placeholder="Tack för affären..."></textarea></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rows -->
+  <div class="card">
+    <div class="card-header">
+      <span>Fakturarader</span>
+      <button onclick="laggTillRad('kund')" class="btn" style="font-size:11px;padding:3px 10px">+ Rad</button>
+    </div>
+    <div>
+      <div class="row-grid row-header">
+        <span>Beskrivning</span><span>Antal</span><span>À-pris</span><span>Moms</span><span style="text-align:right">Summa</span><span></span>
+      </div>
+      <div id="kund-rader"></div>
+    </div>
+    <div class="card-body" style="padding-top:12px">
+      <div class="totals-box">
+        <div class="total-row"><span>Netto</span><span id="kund-tot-netto">0 kr</span></div>
+        <div class="total-row"><span>Moms</span><span id="kund-tot-moms">0 kr</span></div>
+        <div class="total-row main"><span>Totalt</span><span id="kund-tot-total">0 kr</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+    <button onclick="sparaKund('utkast')" class="btn" style="border-color:rgba(251,191,36,0.3);color:var(--warn)">Spara utkast</button>
+    <button onclick="sparaKund('skickad')" class="btn" style="border-color:rgba(34,211,238,0.3);color:#22d3ee">Markera skickad</button>
+    <button onclick="forhandsgranska()" class="btn btn-primary">🖨 Förhandsgranska PDF</button>
+  </div>
+</div>
+
+<!-- PDF MODAL -->
+<div class="overlay" id="pdf-overlay">
+  <div class="modal" style="width:820px">
+    <div class="modal-hdr">
+      <div class="modal-title">Förhandsgranskning</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="skrivUt()" class="btn btn-primary">🖨 Skriv ut / Spara PDF</button>
+        <button onclick="document.getElementById('pdf-overlay').classList.remove('open')" class="modal-close">✕</button>
+      </div>
+    </div>
+    <div style="overflow-y:auto;max-height:calc(92vh - 70px);padding:20px">
+      <div id="pdf-content" class="pdf-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="edit-overlay">
+  <div class="modal" style="width:500px">
+    <div class="modal-hdr">
+      <div class="modal-title" id="edit-title">Redigera faktura</div>
+      <button onclick="document.getElementById('edit-overlay').classList.remove('open')" class="modal-close">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="form-select" id="edit-status">
+          <option value="utkast">Utkast</option>
+          <option value="skickad">Skickad</option>
+          <option value="betald">Betald</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Anteckningar</label><textarea class="form-textarea" id="edit-notes"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="taBortFaktura()" class="btn btn-red">🗑 Ta bort</button>
+      <div style="flex:1"></div>
+      <button onclick="document.getElementById('edit-overlay').classList.remove('open')" class="btn">Avbryt</button>
+      <button onclick="sparaEditering()" class="btn btn-primary">Spara</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+// API proxy via Cloudflare Worker
+const WORKER = 'https://claudeproxy.andreas-karlsson.workers.dev';
+const _origFetch = window.fetch.bind(window);
+window.fetch = function(url, opts) {
+  if (typeof url === 'string' && url.includes('tahwecikznaomcppqadf.supabase.co')) {
+    url = url
+      .replace('https://tahwecikznaomcppqadf.supabase.co/rest/v1/', WORKER + '/api/')
+      .replace('https://tahwecikznaomcppqadf.supabase.co/storage/v1/', WORKER + '/storage/');
+    if (opts && opts.headers) {
+      const h = opts.headers;
+      delete h['apikey'];
+      delete h['Authorization'];
+    }
+  }
+  return _origFetch(url, opts);
+};
+
+// ===== KUNDREGISTER =====
+const KUNDER = {
+  'ALFA Laval':         {org:'556013-5622', addr:'SE-221 00 Lund', contact:'', email:''},
+  'Amaze INC':          {org:'', addr:'', contact:'', email:''},
+  'Bromma Stål':        {org:'', addr:'', contact:'', email:''},
+  'Cue Dee':            {org:'', addr:'', contact:'', email:''},
+  'Enter Sales':        {org:'', addr:'', contact:'', email:''},
+  'Flowlife':           {org:'', addr:'', contact:'', email:''},
+  'Hallands bygg':      {org:'', addr:'', contact:'', email:''},
+  'Henkel Trokell':     {org:'', addr:'', contact:'', email:''},
+  'Koycoating':         {org:'', addr:'', contact:'', email:''},
+  'Nya Carnegiebryggeriet':{org:'', addr:'', contact:'', email:''},
+  'Osteotec':           {org:'', addr:'', contact:'', email:''},
+  'Solann':             {org:'', addr:'', contact:'', email:''},
+  'Standab':            {org:'', addr:'', contact:'', email:''},
+  'Taktältarna':        {org:'', addr:'Västra Götaland', contact:'', email:''},
+  'Vemu':               {org:'', addr:'', contact:'', email:''},
+};
+const LS_KUNDER = 'simptra_kunder';
+
+function loadKunder(){
+  try {
+    const k = localStorage.getItem(LS_KUNDER);
+    if(k) Object.assign(KUNDER, JSON.parse(k));
+  } catch(e){}
+}
+function saveKunder(){ localStorage.setItem(LS_KUNDER, JSON.stringify(KUNDER)); }
+
+// Supabase kunder
+const SB_URL = 'https://tahwecikznaomcppqadf.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+let sbKunder = []; // [{namn, org_nr, postnr, ort, email, kontakt}]
+
+async function laddaSbKunder(){
+  const {data} = await sb.from('transport_kunder').select('namn,org_nr,postnr,ort,email,kontakt').order('namn');
+  if(data) sbKunder = data;
+}
+
+let KUND_LIST = [];
+
+function visaKundDropdown(filter=''){
+  const dd = document.getElementById('kund-dropdown');
+  const q = (filter||'').toLowerCase();
+  const alla = sbKunder.length ? sbKunder : Object.keys(KUNDER).map(n=>({namn:n}));
+  const matches = alla.filter(k=>(k.namn||'').toLowerCase().includes(q)).slice(0,12);
+  dd.innerHTML = matches.map(k=>`
+    <div data-namn="${(k.namn||'').replace(/"/g,'&quot;')}" onclick="valjKundEl(this)" style="padding:9px 14px;cursor:pointer;font-size:13px;color:#1a1a1a;border-bottom:1px solid #f0f0eb"
+      onmouseover="this.style.background='#e0f2f1'" onmouseout="this.style.background='#fff'">
+      <div style="font-weight:500">${k.namn}</div>
+      ${k.org_nr?`<div style="font-size:11px;color:#888">${k.org_nr} · ${k.postnr||''} ${k.ort||''}</div>`:''}
+    </div>
+  `).join('') + `<div onclick="laggTillNyKund()" style="padding:9px 14px;cursor:pointer;font-size:13px;color:var(--accent);border-top:1px solid #e8e8e2;font-weight:500"
+    onmouseover="this.style.background='#e0f2f1'" onmouseout="this.style.background='#fff'">+ Lägg till ny kund...</div>`;
+  dd.style.display = 'block';
+}
+
+function filterKundDropdown(val){ visaKundDropdown(val); }
+
+function valjKundEl(el){
+  const name = el.getAttribute('data-namn');
+  valjKund(name);
+}
+
+function valjKund(name){
+  document.getElementById('k-to-name').value = name;
+  document.getElementById('k-to-name-display').value = name;
+  document.getElementById('kund-dropdown').style.display = 'none';
+  fyllKundInfo(name);
+}
+
+function laggTillNyKund(){
+  const n = prompt('Namn på ny kund:');
+  if(n&&n.trim()){
+    KUNDER[n.trim()] = {org:'',addr:'',contact:'',email:''};
+    saveKunder();
+    valjKund(n.trim());
+  }
+}
+
+function fyllKundInfo(val){
+  if(!val) return;
+  // Försök från Supabase först
+  const sbK = sbKunder.find(k=>k.namn===val);
+  if(sbK){
+    document.getElementById('k-to-org').value     = sbK.org_nr||'';
+    document.getElementById('k-to-addr').value    = sbK.postnr ? (sbK.postnr+' '+sbK.ort).trim() : (sbK.ort||'');
+    document.getElementById('k-to-contact').value = sbK.kontakt||'';
+    document.getElementById('k-to-email').value   = sbK.email||'';
+    return;
+  }
+  // Fallback till localStorage
+  const k = KUNDER[val]||{};
+  document.getElementById('k-to-org').value     = k.org||'';
+  document.getElementById('k-to-addr').value    = k.addr||'';
+  document.getElementById('k-to-contact').value = k.contact||'';
+  document.getElementById('k-to-email').value   = k.email||'';
+}
+
+function sparaKundInfo(){
+  const name = document.getElementById('k-to-name').value;
+  if(!name||name==='__ny__') return;
+  KUNDER[name] = {
+    org:     document.getElementById('k-to-org').value,
+    addr:    document.getElementById('k-to-addr').value,
+    contact: document.getElementById('k-to-contact').value,
+    email:   document.getElementById('k-to-email').value,
+  };
+  saveKunder();
+}
+
+// ===================== STATE =====
+const LS_KEY = 'simptra_fakturor';
+const LS_NR  = 'simptra_next_nr';
+let fakturor = [];
+let nextNr = 1;
+let editId = null;
+
+// Lev rows & kund rows
+let levRader = [];
+let kundRader = [];
+let levB64 = null;
+let levMime = null;
+
+async function load(){
+  try {
+    // Hämta från Supabase
+    const resp = await fetch(SB_URL+'/rest/v1/fakturor?select=*&order=datum.desc', {
+      headers: {'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY}
+    });
+    const data = await resp.json();
+    if(Array.isArray(data) && data.length > 0){
+      fakturor = data.map(f=>({
+        id:       f.id,
+        nr:       f.nr,
+        typ:      f.typ,
+        status:   f.status,
+        datum:    f.datum,
+        forfaller: f.forfaller,
+        villkor:  f.villkor,
+        till:     f.to_name,
+        to_ref:   f.to_ref,
+        rows:     typeof f.rows === 'string' ? JSON.parse(f.rows) : (f.rows||[]),
+        netto:    f.netto||0,
+        moms:     f.moms||0,
+        total:    f.total||0,
+        notes:    f.notes||'',
+        from_name: f.from_name,
+        from_org:  f.from_org,
+        from_addr: f.from_addr,
+        from_bg:   f.from_bg,
+        from_iban: f.from_iban,
+        from_bic:  f.from_bic,
+        from_moms: f.from_moms,
+        bokning_ref: f.bokning_ref,
+        lev_file:  f.lev_file,
+      }));
+      // Räkna ut nästa nr
+      const nrs = fakturor.map(f=>parseInt((f.nr||'').replace(/\D/g,''))||0);
+      nextNr = (Math.max(0,...nrs))+1;
+    } else {
+      // Fallback localStorage
+      const lf = localStorage.getItem(LS_KEY);
+      const ln = localStorage.getItem(LS_NR);
+      if(lf) fakturor = JSON.parse(lf);
+      if(ln) nextNr = parseInt(ln)||1;
+    }
+  } catch(e){ 
+    console.warn('Supabase load failed, using localStorage:', e);
+    try {
+      const lf = localStorage.getItem(LS_KEY);
+      const ln = localStorage.getItem(LS_NR);
+      if(lf) fakturor = JSON.parse(lf);
+      if(ln) nextNr = parseInt(ln)||1;
+    } catch(e2){}
+  }
+  renderOversikt();
+}
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(fakturor));
+  localStorage.setItem(LS_NR, String(nextNr));
+}
+
+// ===== NAV =====
+function showPage(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='oversikt') renderOversikt();
+  if(id==='ny-kund') initKund();
+  if(id==='ny-lev') initLev();
+}
+
+// ===== HELPERS =====
+const fmtKr = n => Math.round(n||0).toLocaleString('sv-SE')+' kr';
+const today = () => new Date().toISOString().split('T')[0];
+function addDays(d, n){ const dt=new Date(d); dt.setDate(dt.getDate()+n); return dt.toISOString().split('T')[0]; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+function badgeClass(status){ return {utkast:'badge-utkast',skickad:'badge-skickad',betald:'badge-betald'}[status]||'badge-utkast'; }
+
+// ===== OVERSIKT =====
+function renderOversikt(){
+  const typF = document.getElementById('f-filter-typ').value;
+  const statF = document.getElementById('f-filter-status').value;
+  let data = [...fakturor];
+  if(typF) data=data.filter(f=>f.typ===typF);
+  if(statF) data=data.filter(f=>f.status===statF);
+
+  const kund = fakturor.filter(f=>f.typ==='kund');
+  const lev  = fakturor.filter(f=>f.typ==='lev');
+  const kundSum = kund.reduce((s,f)=>s+(f.total||0),0);
+  const levSum  = lev.reduce((s,f)=>s+(f.total||0),0);
+
+  document.getElementById('s-kund').textContent = kund.length;
+  document.getElementById('s-kund-sum').textContent = fmtKr(kundSum);
+  document.getElementById('s-lev').textContent = lev.length;
+  document.getElementById('s-lev-sum').textContent = fmtKr(levSum);
+  document.getElementById('s-marg').textContent = kundSum>0 ? ((kundSum-levSum)/kundSum*100).toFixed(1)+'%' : '–';
+  document.getElementById('s-utkast').textContent = fakturor.filter(f=>f.status==='utkast').length;
+
+  if(!data.length){
+    document.getElementById('tbody-oversikt').innerHTML = `<tr><td colspan="10"><div class="empty-row">Inga fakturor ännu — börja med + Levfaktura</div></td></tr>`;
+    document.getElementById('info-oversikt').textContent = '0 fakturor';
+    return;
+  }
+
+  document.getElementById('tbody-oversikt').innerHTML = data.sort((a,b)=>(b.datum||'').localeCompare(a.datum||'')).map(f=>`<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${f.nr||'–'}</td>
+    <td><span class="badge ${f.typ==='kund'?'badge-kund':'badge-lev'}">${f.typ==='kund'?'Kund':'Lev'}</span></td>
+    <td>${f.till||'–'}${f.bokning_ref?` <span style="font-size:10px;background:#e0f2f1;color:#00695c;border-radius:4px;padding:1px 5px;margin-left:4px" title="Kopplad till bokning: ${f.bokning_ref}">📦 ${f.bokning_ref}</span>`:''}</td>
+    <td style="font-family:var(--mono);font-size:11px">${f.datum||'–'}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:${new Date(f.forfaller)<new Date()&&f.status!=='betald'?'var(--red)':'inherit'}">${f.forfaller||'–'}</td>
+    <td style="font-family:var(--mono)">${fmtKr(f.netto)}</td>
+    <td style="font-family:var(--mono);color:var(--muted)">${fmtKr(f.moms)}</td>
+    <td style="font-family:var(--mono);font-weight:600">${fmtKr(f.total)}</td>
+    <td>
+      <select class="status-sel ${badgeClass(f.status)}" onchange="snabbStatus('${f.id}',this)">
+        <option value="utkast"${f.status==='utkast'?' selected':''}>Utkast</option>
+        <option value="skickad"${f.status==='skickad'?' selected':''}>Skickad</option>
+        <option value="betald"${f.status==='betald'?' selected':''}>Betald</option>
+      </select>
+    </td>
+    <td style="display:flex;gap:4px;align-items:center">
+      ${f.typ==='kund'?`<button onclick="visaPDF('${f.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 5px" title="PDF">🖨</button>`:''}
+      ${f.typ==='lev'?`<button onclick="skapaKundFranSparad('${f.id}')" style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:4px;cursor:pointer;color:var(--accent);font-size:10px;padding:2px 8px;font-family:var(--font)">✨ Kund</button>`:''}
+      <button onclick="oppnaEdit('${f.id}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 5px" title="Redigera">✏️</button>
+    </td>
+  </tr>`).join('');
+
+  const tot = data.reduce((s,f)=>s+(f.total||0),0);
+  document.getElementById('info-oversikt').textContent = `${data.length} fakturor · ${fmtKr(tot)} totalt`;
+}
+
+function exporteraExcel(){
+  const typF = document.getElementById('f-filter-typ').value;
+  const statF = document.getElementById('f-filter-status').value;
+  let data = [...fakturor];
+  if(typF) data = data.filter(f=>f.typ===typF);
+  if(statF) data = data.filter(f=>f.status===statF);
+  data.sort((a,b)=>(b.datum||'').localeCompare(a.datum||''));
+
+  // Bygg CSV med BOM för Excel (UTF-8)
+  const cols = ['Nr','Typ','Till','Datum','Förfaller','Netto (kr)','Moms (kr)','Totalt (kr)','Status'];
+  const rows = data.map(f=>[
+    f.nr||'',
+    f.typ==='kund'?'Kundfaktura':'Levfaktura',
+    f.till||'',
+    f.datum||'',
+    f.forfaller||'',
+    (f.netto||0).toFixed(2).replace('.',','),
+    (f.moms||0).toFixed(2).replace('.',','),
+    (f.total||0).toFixed(2).replace('.',','),
+    f.status||''
+  ]);
+
+  // Summerad rad
+  const totNetto = data.reduce((s,f)=>s+(f.netto||0),0);
+  const totMoms  = data.reduce((s,f)=>s+(f.moms||0),0);
+  const totTotal = data.reduce((s,f)=>s+(f.total||0),0);
+  rows.push(['','','','','SUMMA',
+    totNetto.toFixed(2).replace('.',','),
+    totMoms.toFixed(2).replace('.',','),
+    totTotal.toFixed(2).replace('.',','),
+    ''
+  ]);
+
+  const sep = ';';
+  const csvContent = '\uFEFF' + [cols, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(sep)).join('\n');
+
+  const blob = new Blob([csvContent], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const today = new Date().toISOString().split('T')[0];
+  const label = typF ? (typF==='kund'?'Kundfakturor':'Levfakturor') : 'Alla-fakturor';
+  a.download = `Simptra-${label}-${today}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function snabbStatus(id, el){
+  const f = fakturor.find(x=>x.id===id);
+  if(!f) return;
+  f.status = el.value;
+  el.className = 'status-sel '+badgeClass(f.status);
+  save();
+  renderOversikt();
+  toast('✓ '+f.nr+' → '+f.status);
+}
+
+// ===== EDIT MODAL =====
+function oppnaEdit(id){
+  const f = fakturor.find(x=>x.id===id);
+  if(!f) return;
+  editId = id;
+  document.getElementById('edit-title').textContent = 'Redigera '+f.nr;
+  document.getElementById('edit-status').value = f.status;
+  document.getElementById('edit-notes').value = f.noter||'';
+  document.getElementById('edit-overlay').classList.add('open');
+}
+function sparaEditering(){
+  const f = fakturor.find(x=>x.id===editId);
+  if(!f) return;
+  f.status = document.getElementById('edit-status').value;
+  f.noter  = document.getElementById('edit-notes').value;
+  save(); renderOversikt();
+  document.getElementById('edit-overlay').classList.remove('open');
+  toast('✓ Sparad');
+}
+function taBortFaktura(){
+  if(!confirm('Ta bort faktura?')) return;
+  fakturor = fakturor.filter(x=>x.id!==editId);
+  save(); renderOversikt();
+  document.getElementById('edit-overlay').classList.remove('open');
+  toast('🗑 Borttagen');
+}
+
+// ===== LEV =====
+function initLev(){
+  levRader = [{desc:'Fraktkostnad',antal:1,pris:0,moms:0}];
+  levB64 = null; levMime = null;
+  document.getElementById('lev-fil').value='';
+  document.getElementById('fil-info').style.display='none';
+  document.getElementById('upload-area').style.display='block';
+  document.getElementById('ai-status').style.display='none';
+  document.getElementById('lev-leverantor').value='';
+  document.getElementById('lev-nr').value='';
+  document.getElementById('lev-datum').value=today();
+  document.getElementById('lev-forfaller').value=addDays(today(),30);
+  document.getElementById('lev-ref').value='';
+  document.getElementById('lev-bokning-id').value='';
+  renderRader('lev');
+  laddaBokningarDropdown();
+}
+
+async function laddaBokningarDropdown(){
+  try {
+    const resp = await fetch(SB_URL+'/rest/v1/bokningar?select=id,kund,ref,etd,typ&aktiv=eq.true&order=etd.desc&limit=100', {
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    const data = await resp.json();
+    const sel = document.getElementById('lev-bokning-id');
+    if(!sel || !Array.isArray(data)) return;
+    sel.innerHTML = '<option value="">— Välj bokning —</option>' +
+      data.map(b => `<option value="${b.id}">${b.kund||''} · ${b.ref||b.id.slice(0,8)} · ${b.etd||''} (${b.typ||''})</option>`).join('');
+  } catch(e){ console.warn('Kunde inte ladda bokningar:', e); }
+}
+
+function filVald(file){
+  if(!file) return;
+  levMime = file.type||'application/pdf';
+  document.getElementById('fil-namn').textContent = file.name;
+  document.getElementById('upload-area').style.display='none';
+  document.getElementById('fil-info').style.display='block';
+  document.getElementById('ai-status').style.display='none';
+  const reader = new FileReader();
+  reader.onload = e => levB64 = e.target.result.split(',')[1];
+  reader.readAsDataURL(file);
+}
+function dropFil(e){ e.preventDefault(); document.getElementById('upload-area').classList.remove('drag'); filVald(e.dataTransfer.files[0]); }
+function rensaFil(){
+  levB64=null; levMime=null;
+  document.getElementById('lev-fil').value='';
+  document.getElementById('fil-info').style.display='none';
+  document.getElementById('upload-area').style.display='block';
+  document.getElementById('ai-status').style.display='none';
+}
+
+async function lasAvMedAI(){
+  if(!levB64){ toast('Ladda upp en fil först'); return; }
+  const btn = document.getElementById('btn-ai');
+  btn.disabled=true; btn.textContent='🤖 Analyserar...';
+  const box = document.getElementById('ai-status');
+  box.style.display='block';
+  box.className='ai-box ai-loading';
+  box.innerHTML='<span class="spin">⟳</span> Skickar till AI och analyserar fakturan...';
+
+  try {
+    const isPdf = levMime==='application/pdf';
+    const contentItem = isPdf
+      ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:levB64}}
+      : {type:'image',source:{type:'base64',media_type:levMime,data:levB64}};
+
+    const resp = await fetch('https://claudeproxy.andreas-karlsson.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          contentItem,
+          {type:'text',text:`Analysera denna leverantörsfaktura och returnera ENDAST giltig JSON utan markdown eller förklaringar:
+{
+  "leverantor": "leverantörens företagsnamn",
+  "fakturanr": "fakturanummer",
+  "datum": "YYYY-MM-DD",
+  "forfallodatum": "YYYY-MM-DD",
+  "referens": "referens eller PO om finns, annars tom sträng",
+  "rader": [
+    {"beskrivning": "tjänstbeskrivning", "antal": 1, "apris": 1000, "moms": 0}
+  ],
+  "netto": 0,
+  "moms_belopp": 0,
+  "totalt": 0,
+  "valuta": "SEK"
+}
+Viktigt: hitta alla rader, konvertera till SEK heltal, datum i YYYY-MM-DD format.`}
+        ]}]
+      })
+    });
+
+    const rawText = await resp.text();
+    console.log('Worker response:', rawText);
+    
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch(e) {
+      throw new Error('Worker svarade med: ' + rawText.substring(0,200));
+    }
+    const text = data.content?.find(c=>c.type==='text')?.text||'';
+    const clean = text.replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    // Fill fields
+    if(parsed.leverantor) document.getElementById('lev-leverantor').value = parsed.leverantor;
+    if(parsed.fakturanr)  document.getElementById('lev-nr').value = parsed.fakturanr;
+    if(parsed.datum)      document.getElementById('lev-datum').value = parsed.datum;
+    if(parsed.forfallodatum) document.getElementById('lev-forfaller').value = parsed.forfallodatum;
+    if(parsed.referens)   document.getElementById('lev-ref').value = parsed.referens;
+
+    if(parsed.rader?.length){
+      levRader = parsed.rader.map(r=>({
+        desc:  r.beskrivning||'Fraktkostnad',
+        antal: r.antal||1,
+        pris:  Math.round(r.apris||0),
+        moms:  r.moms||0,
+      }));
+      renderRader('lev');
+    }
+
+    box.className='ai-box ai-done';
+    box.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">✓ Faktura inläst!</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.8">
+        <b>Leverantör:</b> ${parsed.leverantor||'–'}<br>
+        <b>Fakturanr:</b> ${parsed.fakturanr||'–'}<br>
+        <b>Datum:</b> ${parsed.datum||'–'} · Förfaller: ${parsed.forfallodatum||'–'}<br>
+        <b>Rader:</b> ${(parsed.rader||[]).length} st · <b>Totalt:</b> ${Math.round(parsed.totalt||0).toLocaleString('sv-SE')} ${parsed.valuta||'SEK'}
+      </div>`;
+    toast('✓ Faktura inläst!');
+
+  } catch(e){
+    box.className='ai-box ai-err';
+    box.innerHTML='⚠ Kunde inte läsa av: '+e.message;
+    toast('⚠ '+e.message);
+  }
+
+  btn.disabled=false; btn.textContent='🤖 Läs av faktura med AI';
+}
+
+function sparaLev(status){
+  const netto = levRader.reduce((s,r)=>s+r.antal*(r.pris||0),0);
+  const moms  = levRader.reduce((s,r)=>s+r.antal*(r.pris||0)*(r.moms/100),0);
+  const bokningId = document.getElementById('lev-bokning-id')?.value || '';
+  const bokningOpt = document.getElementById('lev-bokning-id')?.selectedOptions[0];
+  const bokningRef = bokningOpt?.textContent?.split('·')[1]?.trim() || '';
+  const f = {
+    id: uid(), typ:'lev', status,
+    nr: document.getElementById('lev-nr').value||'LEV-'+String(nextNr).padStart(4,'0'),
+    till: document.getElementById('lev-leverantor').value||'Okänd leverantör',
+    datum: document.getElementById('lev-datum').value,
+    forfaller: document.getElementById('lev-forfaller').value,
+    ref: document.getElementById('lev-ref').value,
+    bokning_id: bokningId || null,
+    bokning_ref: bokningRef || null,
+    rader: JSON.parse(JSON.stringify(levRader)),
+    netto, moms, total: netto+moms,
+  };
+  fakturor.push(f); nextNr++; save();
+  toast('✓ Levfaktura sparad');
+  showPage('oversikt', document.querySelector('.nav-tab'));
+  renderOversikt();
+}
+
+function skapaBokning(){
+  const lev = document.getElementById('lev-leverantor').value||'';
+  const ref = document.getElementById('lev-nr').value||'';
+  const datum = document.getElementById('lev-datum').value||'';
+  const netto = levRader.reduce((s,r)=>s+r.antal*(r.pris||0),0);
+
+  // Save pending booking to localStorage for bokningssystemet to pick up
+  const pending = {
+    _pending: true,
+    typ: 'Sjö', // default, user changes in bokningar
+    kund: '',
+    ref: ref,
+    po: ref,
+    etd: datum,
+    eta: '',
+    inkop: Math.round(netto),
+    forsaljning: 0,
+    vinst: 0,
+    marginal: 0,
+    partner: lev,
+    status: 'Bokad',
+    kommentar: 'Skapad från levfaktura '+ref,
+  };
+  localStorage.setItem('simptra_pending_booking', JSON.stringify(pending));
+
+  // Open bokningar in new tab
+  window.open('/?ny_bokning=1', '_blank');
+  toast('📦 Öppnar bokningssystemet — fyll i kund och detaljer!');
+}
+
+function skapaKundFranLev(){
+  kundRader = levRader.map(r=>({...r, pris: Math.round(r.pris*1.15)}));
+  document.getElementById('k-to-ref').value = document.getElementById('lev-ref').value||document.getElementById('lev-nr').value;
+  document.getElementById('k-notes').value = 'Ref levfaktura: '+(document.getElementById('lev-nr').value||'–');
+  initKundMedRader();
+}
+
+function skapaKundFranSparad(id){
+  const f = fakturor.find(x=>x.id===id);
+  if(!f) return;
+  kundRader = (f.rader||[]).map(r=>({...r, pris:Math.round((r.pris||0)*1.15)}));
+  document.getElementById('k-to-ref').value = f.ref||f.nr||'';
+  document.getElementById('k-notes').value = 'Ref levfaktura: '+f.nr;
+  initKundMedRader();
+  showPage('ny-kund', document.querySelectorAll('.nav-tab')[2]);
+  toast('✨ Rader kopierade — välj kund och justera priser!');
+}
+
+// ===== KUND =====
+function initKund(){
+  // Only reset rows if not coming from URL params
+  const p = new URLSearchParams(window.location.search);
+  if(!p.get('pris')) {
+    if(!kundRader.length) kundRader=[{desc:'Fraktkostnad',antal:1,pris:0,moms:25}];
+  }
+  document.getElementById('k-datum').value = today();
+  document.getElementById('k-nr').value = 'F-'+String(nextNr).padStart(4,'0');
+  uppdateraForfall();
+  renderRader('kund');
+}
+
+function initKundMedRader(){
+  document.getElementById('k-datum').value = today();
+  document.getElementById('k-nr').value = 'F-'+String(nextNr).padStart(4,'0');
+  uppdateraForfall();
+  renderRader('kund');
+}
+
+function uppdateraForfall(){
+  const d = document.getElementById('k-datum').value;
+  const days = parseInt(document.getElementById('k-villkor').value)||30;
+  if(d) document.getElementById('k-forfaller').value = addDays(d, days);
+}
+
+function sparaKund(status){
+  sparaKundInfo();
+  const netto = kundRader.reduce((s,r)=>s+r.antal*(r.pris||0),0);
+  const moms  = kundRader.reduce((s,r)=>s+r.antal*(r.pris||0)*(r.moms/100),0);
+  const f = {
+    id: uid(), typ:'kund', status,
+    nr: document.getElementById('k-nr').value||'F-'+String(nextNr).padStart(4,'0'),
+    till:    document.getElementById('k-to-name').value||'Okänd kund',
+    tillOrg:     document.getElementById('k-to-org').value,
+    tillAddr:    document.getElementById('k-to-addr').value,
+    tillContact: document.getElementById('k-to-contact').value,
+    tillEmail:   document.getElementById('k-to-email').value,
+    datum: document.getElementById('k-datum').value,
+    forfaller: document.getElementById('k-forfaller').value,
+    ref: document.getElementById('k-to-ref').value,
+    fromName: document.getElementById('k-from-name').value,
+    fromOrg:  document.getElementById('k-from-org').value,
+    fromAddr: document.getElementById('k-from-addr').value,
+    fromMomsreg: document.getElementById('k-from-momsreg').value,
+    fromBg:   document.getElementById('k-from-bg').value,
+    fromIban: document.getElementById('k-from-iban').value,
+    fromBic:  document.getElementById('k-from-bic').value,
+    noter: document.getElementById('k-notes').value,
+    villkor: document.getElementById('k-villkor').value,
+    rader: JSON.parse(JSON.stringify(kundRader)),
+    netto, moms, total: netto+moms,
+  };
+  fakturor.push(f); nextNr++; save();
+  toast('✓ Kundfaktura '+f.nr+' sparad');
+  kundRader = [];
+  showPage('oversikt', document.querySelector('.nav-tab'));
+  renderOversikt();
+}
+
+// ===== ROWS =====
+function newRad(){ return {desc:'',antal:1,pris:0,moms:25}; }
+
+function laggTillRad(ctx){
+  if(ctx==='lev') levRader.push(newRad());
+  else kundRader.push(newRad());
+  renderRader(ctx);
+}
+
+function taBortRad(ctx, i){
+  if(ctx==='lev'){ levRader.splice(i,1); if(!levRader.length) levRader=[newRad()]; }
+  else { kundRader.splice(i,1); if(!kundRader.length) kundRader=[newRad()]; }
+  renderRader(ctx);
+}
+
+function uppdateraRad(ctx, i, field, val){
+  const rader = ctx==='lev' ? levRader : kundRader;
+  rader[i][field] = field==='desc' ? val : parseFloat(val)||0;
+  // Only update totals, don't re-render rows (would lose focus)
+  uppdateraTotaler(ctx);
+}
+
+function uppdateraTotaler(ctx){
+  const rader = ctx==='lev' ? levRader : kundRader;
+  const prefix = ctx==='lev' ? 'lev' : 'kund';
+  const netto = rader.reduce((s,r)=>s+r.antal*(r.pris||0),0);
+  const moms  = rader.reduce((s,r)=>s+r.antal*(r.pris||0)*(r.moms/100),0);
+  document.getElementById(prefix+'-tot-netto').textContent = fmtKr(netto);
+  document.getElementById(prefix+'-tot-moms').textContent  = fmtKr(moms);
+  document.getElementById(prefix+'-tot-total').textContent = fmtKr(netto+moms);
+}
+
+function renderRader(ctx){
+  const rader = ctx==='lev' ? levRader : kundRader;
+  const prefix = ctx==='lev' ? 'lev' : 'kund';
+
+  document.getElementById(prefix+'-rader').innerHTML = rader.map((r,i)=>{
+    const rad = r.antal*(r.pris||0);
+    const radMoms = rad*(r.moms/100);
+    return `<div class="row-grid">
+      <input class="row-input" value="${r.desc.replace(/"/g,'&quot;')}" placeholder="Beskrivning..." onchange="uppdateraRad('${ctx}',${i},'desc',this.value)" onblur="uppdateraRad('${ctx}',${i},'desc',this.value)">
+      <input class="row-input" type="number" value="${r.antal}" onchange="uppdateraRad('${ctx}',${i},'antal',this.value)" onblur="uppdateraRad('${ctx}',${i},'antal',this.value)">
+      <input class="row-input" type="number" value="${r.pris}" onchange="uppdateraRad('${ctx}',${i},'pris',this.value)" onblur="uppdateraRad('${ctx}',${i},'pris',this.value)">
+      <select class="row-select" onchange="uppdateraRad('${ctx}',${i},'moms',this.value)">
+        <option value="25"${r.moms==25?' selected':''}>25%</option>
+        <option value="12"${r.moms==12?' selected':''}>12%</option>
+        <option value="6"${r.moms==6?' selected':''}>6%</option>
+        <option value="0"${r.moms==0?' selected':''}>0%</option>
+      </select>
+      <div class="row-sum" id="row-sum-${ctx}-${i}">${Math.round(rad+radMoms).toLocaleString('sv-SE')}</div>
+      <button onclick="taBortRad('${ctx}',${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;text-align:center" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+    </div>`;
+  }).join('');
+
+  uppdateraTotaler(ctx);
+}
+
+// ===== PDF =====
+function forhandsgranska(){
+  const netto = kundRader.reduce((s,r)=>s+r.antal*(r.pris||0),0);
+  const moms  = kundRader.reduce((s,r)=>s+r.antal*(r.pris||0)*(r.moms/100),0);
+  const f = {
+    nr: document.getElementById('k-nr').value,
+    till:        document.getElementById('k-to-name').value,
+    tillOrg:     document.getElementById('k-to-org').value,
+    tillAddr:    document.getElementById('k-to-addr').value,
+    tillContact: document.getElementById('k-to-contact').value,
+    tillEmail:   document.getElementById('k-to-email').value,
+    datum: document.getElementById('k-datum').value,
+    forfaller: document.getElementById('k-forfaller').value,
+    ref: document.getElementById('k-to-ref').value,
+    fromName: document.getElementById('k-from-name').value,
+    fromOrg:  document.getElementById('k-from-org').value,
+    fromAddr: document.getElementById('k-from-addr').value,
+    fromMomsreg: document.getElementById('k-from-momsreg').value,
+    fromBg:   document.getElementById('k-from-bg').value,
+    fromIban: document.getElementById('k-from-iban').value,
+    fromBic:  document.getElementById('k-from-bic').value,
+    noter: document.getElementById('k-notes').value,
+    villkor: document.getElementById('k-villkor').value,
+    rader: kundRader,
+    netto, moms, total: netto+moms,
+  };
+  renderPDF(f);
+  document.getElementById('pdf-overlay').classList.add('open');
+}
+
+function visaPDF(id){
+  const f = fakturor.find(x=>x.id===id);
+  if(!f) return;
+  renderPDF(f);
+  document.getElementById('pdf-overlay').classList.add('open');
+}
+
+function renderPDF(f){
+  const rows = (f.rader||[]).map(r=>{
+    const rad=r.antal*(r.pris||0), radMoms=rad*(r.moms/100);
+    return `<tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:9px 0">${r.desc||'–'}</td>
+      <td style="padding:9px;text-align:right">${r.antal}</td>
+      <td style="padding:9px;text-align:right">${Math.round(r.pris||0).toLocaleString('sv-SE')}</td>
+      <td style="padding:9px;text-align:right">${r.moms}%</td>
+      <td style="padding:9px 0;text-align:right;font-weight:600">${Math.round(rad).toLocaleString('sv-SE')} kr</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('pdf-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px">
+      <div>
+        <div style="font-size:26px;font-weight:700;letter-spacing:-0.02em;color:#111">${f.fromName||'Simptra AB'}</div>
+        <div style="font-size:13px;color:#555;margin-top:8px;line-height:1.8">${f.fromAddr||''}</div>
+        <div style="font-size:12px;color:#888;margin-top:4px">Org.nr: ${f.fromOrg||'–'} · Momsreg: ${f.fromMomsreg||'–'}</div>
+        <div style="font-size:12px;color:#888">Godkänd för F-skatt</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:30px;font-weight:700;color:#16a34a">FAKTURA</div>
+        <div style="font-size:22px;font-weight:600;color:#111;margin-top:4px">${f.nr||'–'}</div>
+        <div style="font-size:12px;color:#666;margin-top:8px">Datum: <b>${f.datum||'–'}</b></div>
+        <div style="font-size:12px;color:#dc2626">Förfaller: <b>${f.forfaller||'–'}</b></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px">
+      <div style="background:#f9fafb;border-radius:8px;padding:16px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#9ca3af;margin-bottom:8px">Faktureras till</div>
+        <div style="font-size:16px;font-weight:600;color:#111">${f.till||'–'}</div>
+        ${f.tillOrg?`<div style="font-size:12px;color:#555;margin-top:3px">Org.nr: ${f.tillOrg}</div>`:''}
+        ${f.tillAddr?`<div style="font-size:12px;color:#555;margin-top:3px">${f.tillAddr}</div>`:''}
+        ${f.tillContact?`<div style="font-size:12px;color:#555;margin-top:3px">Att: ${f.tillContact}</div>`:''}
+        ${f.tillEmail?`<div style="font-size:12px;color:#555;margin-top:3px">${f.tillEmail}</div>`:''}
+        ${f.ref?`<div style="font-size:12px;color:#666;margin-top:6px">Er ref: <b>${f.ref}</b></div>`:''}
+      </div>
+      <div style="background:#f9fafb;border-radius:8px;padding:16px">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#9ca3af;margin-bottom:8px">Betalning</div>
+        <div style="font-size:13px;color:#111">Bankgiro: <b>${f.fromBg||'–'}</b></div>
+        ${f.fromIban?`<div style="font-size:12px;color:#555;margin-top:3px">IBAN: ${f.fromIban}</div>`:''}
+        ${f.fromBic?`<div style="font-size:12px;color:#555;margin-top:3px">BIC: ${f.fromBic}</div>`:''}
+        <div style="font-size:12px;color:#555;margin-top:6px">Betalvillkor: ${f.villkor||'30'} dagar netto</div>
+      </div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+      <thead>
+        <tr style="border-bottom:2px solid #111">
+          <th style="padding:9px 0;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#666">Beskrivning</th>
+          <th style="padding:9px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#666">Antal</th>
+          <th style="padding:9px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#666">À-pris</th>
+          <th style="padding:9px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#666">Moms</th>
+          <th style="padding:9px 0;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.07em;color:#666">Belopp</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:32px">
+      <div style="width:260px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#666"><span>Netto</span><span>${Math.round(f.netto||0).toLocaleString('sv-SE')} kr</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#666"><span>Moms</span><span>${Math.round(f.moms||0).toLocaleString('sv-SE')} kr</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:19px;font-weight:700;border-top:2px solid #111;margin-top:4px"><span>Totalt att betala</span><span>${Math.round(f.total||0).toLocaleString('sv-SE')} kr</span></div>
+      </div>
+    </div>
+
+    ${f.noter?`<div style="padding:14px;background:#f9fafb;border-radius:8px;font-size:13px;color:#555;margin-bottom:24px">${f.noter}</div>`:''}
+
+    <div style="padding-top:16px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:11px;color:#9ca3af">
+      <span>${f.fromName||''} · Org.nr ${f.fromOrg||'–'} · Momsreg: ${f.fromMomsreg||'–'} · Godkänd för F-skatt</span>
+    </div>`;
+}
+
+function skrivUt(){
+  const content = document.getElementById('pdf-content').innerHTML;
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Faktura</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>*{box-sizing:border-box}body{font-family:'Instrument Sans',sans-serif;margin:0;padding:40px;background:#fff;color:#111}@media print{body{padding:20px}}</style>
+    </head><body>${content}</body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(),600);
+}
+
+document.getElementById('pdf-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+document.getElementById('edit-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+
+// ===== INIT =====
+loadKunder();
+laddaSbKunder();
+initLev();
+load(); // async - anropar renderOversikt() när klar
+
+// Läs URL-parametrar från bokningssystemet
+(function(){
+  const p = new URLSearchParams(window.location.search);
+  console.log('URL params:', window.location.search);
+  console.log('pris:', p.get('pris'), 'desc:', p.get('desc'), 'kund:', p.get('kund'));
+  if(p.get('kund')){
+    // Gå direkt till kundfaktura-sidan
+    const tabs = document.querySelectorAll('.nav-tab');
+    showPage('ny-kund', tabs[2]);
+    // Wait for initKund to run first, then override with URL data
+    setTimeout(()=>{
+      const kund = p.get('kund')||'';
+      document.getElementById('k-to-name').value = kund;
+      document.getElementById('k-to-name-display').value = kund;
+      fyllKundInfo(kund);
+      if(p.get('ref'))  document.getElementById('k-to-ref').value = p.get('ref');
+      if(p.get('pris')&&parseInt(p.get('pris'))>0){
+        const desc = p.get('desc')||'Fraktkostnad';
+        kundRader = [{
+          desc,
+          antal: 1,
+          pris:  parseInt(p.get('pris')),
+          moms:  25,
+        }];
+        renderRader('kund');
+      }
+      toast('✓ Offertdata förifyllt — granska och spara!');
+    }, 300);
+  }
+})();
+</script>
+</body>
+</html>

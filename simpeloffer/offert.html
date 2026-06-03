@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simptra — Offertportal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f0eb;--surface:#fff;--surface2:#f5f5f0;
+  --border:#e8e8e2;--text:#1a1a1a;--muted:#888;
+  --accent:#009688;--accent2:#00796B;--warn:#f59e0b;
+  --font:'Inter',sans-serif;
+  --shadow:0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.12);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+
+.header{background:linear-gradient(135deg,#00897B,#00BFA5);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.header-logo{font-size:16px;font-weight:700;color:#fff}
+.header-right{display:flex;align-items:center;gap:12px}
+.header-user{font-size:12px;color:rgba(255,255,255,0.8)}
+.btn-logout{background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--font)}
+.btn-logout:hover{background:rgba(255,255,255,0.25)}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#00897B,#00BFA5)}
+.auth-card{background:#fff;border-radius:20px;padding:40px;width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.auth-logo{font-size:24px;font-weight:700;color:var(--accent);margin-bottom:8px}
+.auth-sub{font-size:13px;color:#888;margin-bottom:28px}
+.auth-tabs{display:flex;gap:0;margin-bottom:24px;background:#f5f5f0;border-radius:10px;padding:4px}
+.auth-tab{flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-family:var(--font);border-radius:8px;color:#888;font-weight:500}
+.auth-tab.active{background:#fff;color:var(--accent);box-shadow:var(--shadow)}
+.form-group{margin-bottom:16px}
+.form-label{font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px}
+.form-input{width:100%;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:10px 14px;font-size:13px;font-family:var(--font);outline:none;color:var(--text)}
+.form-input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(0,150,136,0.1)}
+.btn-primary{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.btn-primary:hover{background:var(--accent2)}
+.auth-err{background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:10px 14px;font-size:12px;color:#c62828;margin-bottom:16px;display:none}
+
+/* MAIN */
+.main{max-width:800px;margin:0 auto;padding:28px 20px}
+.page-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.page-sub{font-size:13px;color:#888;margin-bottom:24px}
+
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);background:#f9f9f7;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:600}
+.card-body{padding:20px}
+
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;border:1px solid #e8e8e2;background:#fff;color:#555;font-weight:500;transition:all 0.15s}
+.btn:hover{background:#f5f5f0}
+.btn-green{background:var(--accent);color:#fff;border-color:transparent}
+.btn-green:hover{background:var(--accent2)}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){
+  .form-grid{grid-template-columns:1fr}
+  .header{padding:0 16px;height:52px}
+  .header-logo{font-size:14px}
+  .header-right{gap:8px}
+  .header-user{display:none}
+  .main{padding:16px}
+  .page-title{font-size:18px}
+  .auth-card{padding:24px 20px}
+  .auth-logo{font-size:20px}
+  .tabs{padding:4px}
+  .tab{font-size:12px;padding:8px 6px}
+  .card-body{padding:14px}
+  .fc-route{font-size:14px}
+  .fc-details{gap:8px}
+  .erb-pris{font-size:24px}
+  .erb-actions{flex-direction:column}
+  .btn-accept,.btn-decline{width:100%;text-align:center}
+}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+.fl{font-size:11px;font-weight:500;color:#777}
+.fi{background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--font);outline:none;color:var(--text);width:100%}
+.fi:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(0,150,136,0.1)}
+.fi option{background:#fff}
+textarea.fi{resize:vertical;min-height:80px}
+
+/* AUTOCOMPLETE */
+.ac-wrap{position:relative}
+.ac-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:50;max-height:200px;overflow-y:auto;display:none}
+.ac-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f5f5f0;color:var(--text)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover{background:#f0faf8;color:var(--accent)}
+.ac-item small{display:block;font-size:11px;color:#999;margin-top:1px}
+
+/* STATUS BADGE */
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+.badge-ny{background:#e3f2fd;color:#1565c0}
+.badge-skickad{background:#fff8e1;color:#f57f17}
+.badge-erbjuden{background:#e8f5e9;color:#2e7d32}
+.badge-accepterad{background:#e8f5e9;color:#2e7d32}
+.badge-avbokad{background:#ffebee;color:#c62828}
+
+/* FÖRFRÅGAN CARD */
+.forfragan-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);transition:all 0.2s}
+.forfragan-card:hover{box-shadow:var(--shadow-md)}
+.fc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.fc-title{font-size:15px;font-weight:600}
+.fc-meta{font-size:12px;color:#888;margin-top:3px}
+.fc-route{display:flex;align-items:center;gap:8px;margin:12px 0;font-size:14px;font-weight:500}
+.fc-route-arrow{color:#ccc;font-size:18px}
+.fc-details{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.fc-detail{font-size:12px;color:#888}
+.fc-detail span{color:var(--text);font-weight:500}
+
+/* ERBJUDANDE */
+.erbjudande-card{background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border:2px solid #a5d6a7;border-radius:12px;padding:18px;margin-top:12px}
+.erb-title{font-size:13px;font-weight:600;color:#2e7d32;margin-bottom:10px}
+.erb-pris{font-size:28px;font-weight:700;color:var(--accent)}
+.erb-meta{font-size:12px;color:#666;margin-top:4px}
+.erb-actions{display:flex;gap:8px;margin-top:14px}
+.btn-accept{background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.btn-accept:hover{background:#1b5e20}
+.btn-decline{background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font)}
+
+.empty{text-align:center;padding:40px;color:#bbb;font-size:13px}
+.empty-icon{font-size:40px;margin-bottom:12px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);z-index:200;opacity:0;transform:translateY(8px);transition:all 0.25s;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.tabs{display:flex;gap:4px;margin-bottom:20px;background:#fff;border-radius:12px;padding:5px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.tab{flex:1;padding:9px;border:none;background:none;cursor:pointer;font-size:13px;font-family:var(--font);border-radius:8px;color:#888;font-weight:500}
+.tab.active{background:var(--accent);color:#fff}
+
+/* SPRÅKVÄXLARE */
+.lang-switch{display:flex;gap:2px;background:rgba(255,255,255,0.15);border-radius:20px;padding:3px}
+.lang-btn{border:none;background:none;color:rgba(255,255,255,0.7);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;padding:3px 9px;border-radius:14px;transition:all 0.15s}
+.lang-btn.active{background:#fff;color:var(--accent)}
+.lang-switch-auth{position:absolute;top:16px;right:16px;display:flex;gap:2px;background:#f0f0eb;border-radius:20px;padding:3px}
+.lang-btn-auth{border:none;background:none;color:#999;font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;padding:3px 9px;border-radius:14px;transition:all 0.15s}
+.lang-btn-auth.active{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-wrap">
+    <div class="auth-card" style="position:relative"><div class="lang-switch-auth"><button class="lang-btn-auth active" onclick="setLang('sv',this.parentNode)">SV</button><button class="lang-btn-auth" onclick="setLang('en',this.parentNode)">EN</button></div>
+      <div class="auth-logo">SIMPTRA</div>
+      <div class="auth-sub" id="auth-sub"><span data-i18n="auth_sub">Logga in för att begära offert eller se dina erbjudanden</span></div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login',this)" data-i18n="login">Logga in</button>
+        <button class="auth-tab" onclick="switchAuthTab('register',this)" data-i18n="register">Registrera</button>
+      </div>
+      <div id="auth-err" class="auth-err"></div>
+      <div id="login-form">
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" type="email" placeholder="din@email.se" onkeydown="if(event.key==='Enter')logga_in()"></div>
+        <div id="otp-step" style="display:none;margin-top:8px">
+          <div class="form-group"><label class="form-label">Kod från mailet</label><input class="form-input" id="login-otp" type="text" inputmode="numeric" maxlength="8" placeholder="12345678" style="letter-spacing:0.3em;font-size:18px;text-align:center" onkeydown="if(event.key==='Enter')verifiera_otp()"></div>
+        </div>
+        <div id="login-ok-msg" style="display:none;color:#16a34a;font-size:13px;line-height:1.6;margin-bottom:8px"></div>
+        <button class="btn-primary" onclick="logga_in()" id="btn-login-magic">Skicka kod →</button>
+        <button class="btn-primary" onclick="verifiera_otp()" id="btn-verifiera-otp" style="display:none;margin-top:8px">Logga in →</button>
+      </div>
+      <div id="register-form" style="display:none">
+        <div class="form-group"><label class="form-label" id="lbl-name">Namn / Företag</label><input class="form-input" id="reg-namn" data-i18n-ph="name_ph" placeholder="Ditt namn eller företag"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="reg-email" type="email" placeholder="din@email.se"></div>
+        <div class="form-group"><label class="form-label" id="lbl-pwd2">Lösenord</label><input class="form-input" id="reg-password" type="password" data-i18n-ph="min6" placeholder="Minst 6 tecken"></div>
+        <button class="btn-primary" onclick="registrera()" data-i18n="create_account">Skapa konto</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="header">
+    <div class="header-logo">SIMPTRA — <span data-i18n="portal_name">Offertportal</span></div>
+    <div class="header-right">
+      <span class="header-user" id="header-user"></span>
+      <div class="lang-switch"><button class="lang-btn active" onclick="setLang('sv',this.parentNode)">SV</button><button class="lang-btn" onclick="setLang('en',this.parentNode)">EN</button></div><button class="btn-logout" id="btn-logout" onclick="logga_ut()">Logga ut</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-title" id="page-title-el">Mina förfrågningar</div>
+    <div class="page-sub" id="page-sub-el">Begär offert för dina transporter och följ dina erbjudanden</div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-mina-btn" onclick="showTab('mina',this)">📋 Mina förfrågningar</button>
+      <button class="tab" id="tab-bokningar-btn" onclick="showTab('bokningar',this)">🚢 Mina bokningar</button>
+      <button class="tab" id="tab-ny-btn" onclick="showTab('ny',this)">+ Ny förfrågan</button>
+    </div>
+
+    <!-- MINA FÖRFRÅGNINGAR -->
+    <div id="tab-mina">
+      <div id="forfragan-list">
+        <div class="empty"><div class="empty-icon">📦</div>${t("empty_title")}<br><small>${t("empty_sub")}</small></div>
+      </div>
+    </div>
+
+    <!-- MINA BOKNINGAR -->
+    <div id="tab-bokningar" style="display:none">
+      <div id="bokningar-list"></div>
+    </div>
+
+    <!-- NY FÖRFRÅGAN -->
+    <div id="tab-ny" style="display:none">
+      <div class="card">
+        <div class="card-header"><div class="card-title" id="new-req-title">✉️ Ny transportförfrågan</div></div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="fg">
+              <label class="fl" id="lbl-fran">Från (ort/land)</label>
+              <div class="ac-wrap">
+                <input class="fi" id="f-fran" placeholder="t.ex. Shanghai, Kina" autocomplete="off" oninput="acSok(this,'ac-fran')">
+                <div class="ac-list" id="ac-fran"></div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-till">Till (ort/land)</label>
+              <div class="ac-wrap">
+                <input class="fi" id="f-till" placeholder="t.ex. Stockholm, Sverige" autocomplete="off" oninput="acSok(this,'ac-till')">
+                <div class="ac-list" id="ac-till"></div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-datum">Önskat datum</label>
+              <input class="fi" type="date" id="f-datum">
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-typ">Transporttyp</label>
+              <select class="fi" id="f-typ" onchange="uppdateraFalt()">
+                <option value="">Välj typ...</option>
+                <option value="Sjö">🚢 Sjöfrakt</option>
+                <option value="Flyg">✈ Flygfrakt</option>
+                <option value="Road">🚛 Landtransport</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-gods">Godstyp / Beskrivning</label>
+              <input class="fi" id="f-gods" placeholder="t.ex. elektronik, möbler...">
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-vikt">Vikt (kg)</label>
+              <input class="fi" id="f-vikt" placeholder="t.ex. 500 kg">
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-volym">Volym / Storlek</label>
+              <input class="fi" id="f-volym" placeholder="t.ex. 9 pallar">
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-incoterms">Incoterms</label>
+              <select class="fi" id="f-incoterms">
+                <option value="">Välj Incoterms...</option>
+                <option value="EXW">EXW — Ex Works</option>
+                <option value="FCA">FCA — Free Carrier</option>
+                <option value="FAS">FAS — Free Alongside Ship</option>
+                <option value="FOB">FOB — Free On Board</option>
+                <option value="CFR">CFR — Cost and Freight</option>
+                <option value="CIF">CIF — Cost, Insurance & Freight</option>
+                <option value="CPT">CPT — Carriage Paid To</option>
+                <option value="CIP">CIP — Carriage & Insurance Paid</option>
+                <option value="DAP">DAP — Delivered At Place</option>
+                <option value="DPU">DPU — Delivered at Place Unloaded</option>
+                <option value="DDP">DDP — Delivered Duty Paid</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl" id="lbl-crd">CRD (Cargo Ready Date)</label>
+              <input class="fi" type="date" id="f-crd">
+            </div>
+
+            <!-- Sjö -->
+            <div class="fg" id="fg-sjo-lasttyp" style="display:none">
+              <label class="fl" id="lbl-sjo-lasttyp">FCL / LCL</label>
+              <select class="fi" id="f-lcl-fcl" onchange="uppdateraFalt()">
+                <option value="">Välj...</option>
+                <option value="FCL">FCL — Full Container Load</option>
+                <option value="LCL">LCL — Less than Container Load</option>
+              </select>
+            </div>
+            <div class="fg" id="fg-container" style="display:none">
+              <label class="fl" id="lbl-container">Containertyp</label>
+              <select class="fi" id="f-container">
+                <option value="">Välj containertyp...</option>
+                <option value="20 DV">20' DV — Dry Van</option>
+                <option value="40 DV">40' DV — Dry Van</option>
+                <option value="40 HC">40' HC — High Cube</option>
+                <option value="20 RF">20' RF — Reefer</option>
+                <option value="40 RF">40' RF — Reefer</option>
+                <option value="40 HCRF">40' HC RF — High Cube Reefer</option>
+                <option value="20 OT">20' OT — Open Top</option>
+                <option value="40 OT">40' OT — Open Top</option>
+                <option value="20 FR">20' FR — Flat Rack</option>
+                <option value="40 FR">40' FR — Flat Rack</option>
+                <option value="20 TK">20' TK — Tank</option>
+              </select>
+            </div>
+
+            <!-- Road -->
+            <div class="fg" id="fg-road-lasttyp" style="display:none">
+              <label class="fl" id="lbl-road-lasttyp">LTL / FTL</label>
+              <select class="fi" id="f-ltl-ftl" onchange="uppdateraFalt()">
+                <option value="">Välj...</option>
+                <option value="FTL">FTL — Full Truck Load</option>
+                <option value="LTL">LTL — Less than Truck Load</option>
+              </select>
+            </div>
+            <div class="fg" id="fg-trailer" style="display:none">
+              <label class="fl" id="lbl-trailer">Trailertyp</label>
+              <select class="fi" id="f-trailer">
+                <option value="">Välj trailertyp...</option>
+                <option value="Tautliner">Tautliner / Gardintrailer</option>
+                <option value="Skåp">Skåpbil</option>
+                <option value="Flatbed">Flatbed / Flak</option>
+                <option value="Kylt">Kylt / Fryst</option>
+                <option value="Jumbo">Jumbo</option>
+                <option value="Megamax">Megamax</option>
+              </select>
+            </div>
+
+            <!-- LCL / Flyg: pallrader -->
+            <div class="fg full" id="fg-matt" style="display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <label class="fl" id="lbl-pallar" style="margin-bottom:0">Kolli / Pallar — mått & vikt</label>
+                <button type="button" id="btn-add-pall" onclick="laggTillPall()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-family:var(--font);cursor:pointer;font-weight:500">+ Lägg till rad</button>
+              </div>
+              <!-- Rubrikrad -->
+              <div style="display:grid;grid-template-columns:60px 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:4px">
+                <span class="fl" style="font-size:10px">Antal</span>
+                <span class="fl" style="font-size:10px">Längd (cm)</span>
+                <span class="fl" style="font-size:10px">Bredd (cm)</span>
+                <span class="fl" style="font-size:10px">Höjd (cm)</span>
+                <span class="fl" style="font-size:10px">Vikt/kolli (kg)</span>
+                <span></span>
+              </div>
+              <div id="pall-rader"></div>
+            </div>
+
+            <div class="fg full">
+              <label class="fl" id="lbl-special">Övrigt / Speciella krav</label>
+              <textarea class="fi" id="f-meddelande" placeholder="Temperaturkrav, farligt gods, speciell hantering..."></textarea>
+            </div>
+            <div class="fg full">
+              <label class="fl">📎 Bifoga dokument (valfritt)</label>
+              <div id="f-docs-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+              <label style="display:inline-flex;align-items:center;gap:8px;background:#f5f5f0;border:1px dashed #ccc;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;color:#666">
+                <span>+ Lägg till fil</span>
+                <input type="file" id="f-docs-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style="display:none" onchange="hanteraNyaFiler(this.files)">
+              </label>
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn" id="btn-cancel" onclick="showTab('mina',document.querySelector('.tab'))">Avbryt</button>
+            <button class="btn btn-green" id="btn-submit" onclick="skickaForfragan()">📤 Skicka förfrågan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- REDIGERA MODAL -->
+<div id="edit-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(2px)" onclick="if(event.target===this)stangRedigera()">
+  <div style="background:#fff;border-radius:16px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="padding:20px 24px;border-bottom:1px solid #f0f0eb;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:600" id="edit-modal-title">Redigera förfrågan</div>
+      <button onclick="stangRedigera()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#888;line-height:1">×</button>
+    </div>
+    <!-- Varning -->
+    <div id="edit-warning" style="display:none;padding:32px 24px;text-align:center">
+      <div style="font-size:40px;margin-bottom:16px">🔒</div>
+      <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:8px">Förfrågan är låst</div>
+      <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:20px">Denna förfrågan är redan skickad till partners och kan inte redigeras. Kontakta oss så hjälper vi dig med ändringar.</div>
+      <a href="mailto:andreas.karlsson@simpeltransport.se" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:600;font-family:var(--font)">✉️ andreas.karlsson@simpeltransport.se</a>
+    </div>
+    <!-- Formulär -->
+    <div id="edit-form" style="padding:20px 24px">
+      <div class="form-grid">
+        <div class="fg"><label class="fl">Från (ort/land)</label><input class="fi" id="ef-fran" placeholder="t.ex. Shanghai, Kina"></div>
+        <div class="fg"><label class="fl">Till (ort/land)</label><input class="fi" id="ef-till" placeholder="t.ex. Stockholm, Sverige"></div>
+        <div class="fg"><label class="fl">Önskat datum</label><input class="fi" type="date" id="ef-datum"></div>
+        <div class="fg"><label class="fl">Transporttyp</label>
+          <select class="fi" id="ef-typ">
+            <option value="">Välj typ...</option>
+            <option value="Sjö">🚢 Sjöfrakt</option>
+            <option value="Flyg">✈ Flygfrakt</option>
+            <option value="Road">🚛 Landtransport</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Godstyp / Beskrivning</label><input class="fi" id="ef-gods" placeholder="t.ex. elektronik, möbler..."></div>
+        <div class="fg"><label class="fl">Vikt (kg)</label><input class="fi" id="ef-vikt" placeholder="t.ex. 500 kg"></div>
+        <div class="fg"><label class="fl">Volym / Storlek</label><input class="fi" id="ef-volym" placeholder="t.ex. 2 pallar, 1 container"></div>
+        <div class="fg"><label class="fl">Incoterms</label>
+          <select class="fi" id="ef-incoterms">
+            <option value="">Välj Incoterms...</option>
+            <option value="EXW">EXW — Ex Works</option><option value="FCA">FCA — Free Carrier</option>
+            <option value="FAS">FAS — Free Alongside Ship</option><option value="FOB">FOB — Free On Board</option>
+            <option value="CFR">CFR — Cost and Freight</option><option value="CIF">CIF — Cost, Insurance & Freight</option>
+            <option value="CPT">CPT — Carriage Paid To</option><option value="CIP">CIP — Carriage & Insurance Paid</option>
+            <option value="DAP">DAP — Delivered At Place</option><option value="DPU">DPU — Delivered at Place Unloaded</option>
+            <option value="DDP">DDP — Delivered Duty Paid</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">CRD (Cargo Ready Date)</label><input class="fi" type="date" id="ef-crd"></div>
+        <div class="fg"><label class="fl">FCL / LCL / Lasttyp</label><input class="fi" id="ef-lcl-fcl" placeholder="t.ex. FCL, LCL, FTL, LTL"></div>
+        <div class="fg"><label class="fl">Container / Trailer</label><input class="fi" id="ef-container" placeholder="t.ex. 40 DV, Tautliner"></div>
+        <div class="fg full"><label class="fl">Övrigt / Speciella krav</label><textarea class="fi" id="ef-meddelande" placeholder="Temperaturkrav, farligt gods, speciell hantering..."></textarea></div>
+        <div class="fg full">
+          <label class="fl">📎 Dokument</label>
+          <div id="ef-docs-list" style="margin-bottom:8px"></div>
+          <label style="display:inline-flex;align-items:center;gap:8px;background:#f5f5f0;border:1px dashed #ccc;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;color:#666">
+            <span>+ Lägg till fil</span>
+            <input type="file" id="ef-docs-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style="display:none" onchange="laddaUppForfraganDok(this.files)">
+          </label>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn" onclick="stangRedigera()">Avbryt</button>
+        <button class="btn btn-green" onclick="sparaRedigering()">💾 Spara ändringar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://tahwecikznaomcppqadf.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let currentUser = null;
+
+// ===== AUTH =====
+function switchAuthTab(tab, btn){
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
+  document.getElementById('register-form').style.display = tab==='register'?'block':'none';
+  document.getElementById('auth-err').style.display = 'none';
+}
+
+async function logga_in(){
+  const email = document.getElementById('login-email').value.trim();
+  if(!email){ showErr('Fyll i din email'); return; }
+  const btn = document.getElementById('btn-login-magic');
+  const okMsg = document.getElementById('login-ok-msg');
+  if(btn){ btn.textContent='Skickar...'; btn.disabled=true; }
+
+  const {error} = await sb.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false }
+  });
+
+  if(btn){ btn.disabled=false; btn.textContent='Skicka kod →'; }
+
+  if(error){ showErr('Kunde inte skicka kod — kontrollera emailen'); return; }
+
+  if(okMsg){
+    okMsg.innerHTML='✅ Kolla din inbox! Ange den 8-siffriga koden från mailet.';
+    okMsg.style.display='block';
+  }
+  document.getElementById('login-email').disabled = true;
+  if(btn) btn.style.display = 'none';
+  document.getElementById('otp-step').style.display = 'block';
+  document.getElementById('btn-verifiera-otp').style.display = 'block';
+  setTimeout(()=>document.getElementById('login-otp').focus(), 100);
+}
+
+async function verifiera_otp(){
+  const email = document.getElementById('login-email').value.trim();
+  const token = document.getElementById('login-otp').value.trim();
+  if(!token || token.length < 8){ showErr('Ange den 8-siffriga koden'); return; }
+  const btn = document.getElementById('btn-verifiera-otp');
+  btn.textContent='Verifierar...'; btn.disabled=true;
+  const {data, error} = await sb.auth.verifyOtp({ email, token, type: 'email' });
+  btn.disabled=false; btn.textContent='Logga in →';
+  if(error){ showErr('Fel kod — försök igen'); return; }
+  window.location.reload();
+}
+
+async function registrera(){
+  const namn  = document.getElementById('reg-namn').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass  = document.getElementById('reg-password').value;
+  if(!namn||!email||!pass){ showErr(t('err_all')); return; }
+  const {error} = await sb.auth.signUp({email, password:pass, options:{data:{full_name:namn}}});
+  if(error) showErr(error.message);
+  else showErr(t('confirm_email'));
+}
+
+async function logga_ut(){
+  await sb.auth.signOut();
+}
+
+function showErr(msg){
+  const el = document.getElementById('auth-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if(session?.user){
+    currentUser = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('header-user').textContent = currentUser.user_metadata?.full_name || currentUser.email;
+    laddaLangFranSupabase(currentUser.email);
+    laddaForfragan();
+  } else {
+    currentUser = null;
+    document.getElementById('auth-screen').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+// ===== ORTAUTOCOMPLETE (Nominatim) =====
+const acTimers = {};
+function acSok(input, listId){
+  const q = input.value.trim();
+  const list = document.getElementById(listId);
+  clearTimeout(acTimers[listId]);
+  if(q.length < 2){ list.style.display='none'; return; }
+  acTimers[listId] = setTimeout(async ()=>{
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=${encodeURIComponent(q)}`,
+        {headers:{'Accept-Language':'sv,en'}});
+      const data = await res.json();
+      if(!data.length){ list.style.display='none'; return; }
+      list.innerHTML = data.map(d=>{
+        const stad = d.address?.city || d.address?.town || d.address?.village || d.address?.county || d.name || '';
+        const land = d.address?.country || '';
+        const label = stad && land ? `${stad}, ${land}` : d.display_name.split(',').slice(0,2).join(',').trim();
+        return `<div class="ac-item" onclick="acValj('${input.id}','${listId}','${label.replace(/'/g,"\\'")}')">
+          ${stad||d.name}<small>${land}</small>
+        </div>`;
+      }).join('');
+      list.style.display = 'block';
+    } catch(e){ list.style.display='none'; }
+  }, 300);
+}
+function acValj(inputId, listId, val){
+  document.getElementById(inputId).value = val;
+  document.getElementById(listId).style.display = 'none';
+}
+document.addEventListener('click', e=>{
+  ['ac-fran','ac-till'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.contains(e.target)) el.style.display='none';
+  });
+});
+
+// ===== PALLAR =====
+let pallRaderCount = 0;
+
+function laggTillPall(){
+  const id = ++pallRaderCount;
+  const div = document.createElement('div');
+  div.id = 'pall-rad-'+id;
+  div.style.cssText = 'display:grid;grid-template-columns:60px 1fr 1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:center';
+  div.innerHTML =
+    '<input class="fi" type="number" min="1" placeholder="1" style="padding:7px 8px" data-pall="antal">'+
+    '<input class="fi" type="number" min="1" placeholder="120" style="padding:7px 8px" data-pall="langd">'+
+    '<input class="fi" type="number" min="1" placeholder="80" style="padding:7px 8px" data-pall="bredd">'+
+    '<input class="fi" type="number" min="1" placeholder="100" style="padding:7px 8px" data-pall="hojd">'+
+    '<input class="fi" type="number" min="0.1" step="0.1" placeholder="500" style="padding:7px 8px" data-pall="vikt">'+
+    '<button type="button" onclick="taBortPall('+id+')" style="background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:16px;line-height:1;padding:0">×</button>';
+  document.getElementById('pall-rader').appendChild(div);
+}
+
+function taBortPall(id){
+  var el = document.getElementById('pall-rad-'+id);
+  if(el) el.remove();
+}
+
+function hamtaPallData(){
+  var rader = document.querySelectorAll('#pall-rader > div');
+  if(!rader.length) return null;
+  return Array.from(rader).map(function(rad){
+    return {
+      antal: rad.querySelector('[data-pall="antal"]').value || '1',
+      langd: rad.querySelector('[data-pall="langd"]').value || '?',
+      bredd: rad.querySelector('[data-pall="bredd"]').value || '?',
+      hojd:  rad.querySelector('[data-pall="hojd"]').value  || '?',
+      vikt:  rad.querySelector('[data-pall="vikt"]').value  || '?',
+    };
+  });
+}
+
+// ===== TABS =====
+function showTab(tab, btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-mina').style.display      = tab==='mina'?'block':'none';
+  document.getElementById('tab-ny').style.display        = tab==='ny'?'block':'none';
+  document.getElementById('tab-bokningar').style.display = tab==='bokningar'?'block':'none';
+  if(tab==='mina') laddaForfragan();
+  if(tab==='bokningar') laddaBokningar();
+}
+
+// ===== BOKNINGAR =====
+async function laddaBokningar(){
+  const el = document.getElementById('bokningar-list');
+  el.innerHTML = '<div class="empty">Laddar bokningar...</div>';
+  const kundId = await hamtaKundId();
+
+  const filter = erAdmin() ? '' : 'kund_id=eq.'+kundId+'&';
+  const resp = await fetch(SB_URL+'/rest/v1/bokningar?'+filter+'aktiv=eq.true&order=etd.desc',{
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  const data = await resp.json();
+
+  if(!data?.length){
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🚢</div>Inga bokningar ännu</div>';
+    return;
+  }
+
+  const statusInfo = {
+    'Bokning':   {icon:'📋', color:'#1565c0', bg:'#e3f2fd', label:'Bokad'},
+    'Transit':   {icon:'🚢', color:'#e65100', bg:'#fff3e0', label:'I transit'},
+    'Anländ':    {icon:'✅', color:'#2e7d32', bg:'#e8f5e9', label:'Anländ'},
+    'Levererad': {icon:'🏁', color:'#4a148c', bg:'#f3e5f5', label:'Levererad'},
+    'Fakturerad':{icon:'🧾', color:'#00695c', bg:'#e0f2f1', label:'Fakturerad'},
+  };
+
+  el.innerHTML = data.map(b => {
+    const s = statusInfo[b.status] || {icon:'📦', color:'#888', bg:'#f5f5f0', label: b.status||'–'};
+    const etd = b.etd ? new Date(b.etd).toLocaleDateString('sv-SE') : '–';
+    const eta = b.eta ? new Date(b.eta).toLocaleDateString('sv-SE') : '–';
+    const typIcon = b.typ==='Sjö'?'🚢': b.typ==='Flyg'?'✈️':'🚛';
+    const steg = ['Bokning','Transit','Anländ','Levererad'];
+    const aktivSteg = steg.indexOf(b.status);
+
+    return `<div style="background:#fff;border:1px solid #e8e8e2;border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-size:15px;font-weight:600">${typIcon} ${b.ref||'–'}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${b.kund||''} · ${b.partner||''}</div>
+        </div>
+        <span style="background:${s.bg};color:${s.color};font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px">${s.icon} ${s.label}</span>
+      </div>
+
+      <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="font-size:12px;color:#888">ETD: <span style="color:#1a1a1a;font-weight:500">${etd}</span></div>
+        <div style="font-size:12px;color:#888">ETA: <span style="color:#1a1a1a;font-weight:500">${eta}</span></div>
+        ${b.size?`<div style="font-size:12px;color:#888">Storlek: <span style="color:#1a1a1a;font-weight:500">${b.size}</span></div>`:''}
+        ${b.po?`<div style="font-size:12px;color:#888">PO: <span style="color:#1a1a1a;font-weight:500">${b.po}</span></div>`:''}
+      </div>
+
+      <!-- Progress bar -->
+      <div style="display:flex;margin-bottom:16px">
+        ${steg.map((steg_, i) => {
+          const aktiv = i === aktivSteg;
+          const klar  = i < aktivSteg;
+          const bg    = (klar||aktiv) ? '#009688' : '#e8e8e2';
+          const textColor = (klar||aktiv) ? '#fff' : '#999';
+          const radius = i===0?'8px 0 0 8px':i===3?'0 8px 8px 0':'0';
+          return `<div style="flex:1;background:${bg};color:${textColor};font-size:10px;font-weight:600;padding:6px 4px;text-align:center;border-radius:${radius};opacity:${aktiv?1:klar?0.85:0.4}">${steg_}</div>`;
+        }).join('')}
+      </div>
+
+      <!-- Karta -->
+      ${(b.typ==='Sjö'||b.typ==='Flyg') && b.portalen && b.portalen.startsWith('http') ? `
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:500;color:#777;margin-bottom:6px">🗺️ Spårning</div>
+        <iframe src="${b.portalen}" style="width:100%;height:240px;border:none;border-radius:10px;background:#f5f5f0" loading="lazy"></iframe>
+      </div>` : ''}
+
+      <!-- Dokument -->
+      <div style="border-top:1px solid #f0f0eb;padding-top:14px;margin-top:4px">
+        <div style="font-size:11px;font-weight:500;color:#777;margin-bottom:8px">📎 Dokument</div>
+        <div id="bok-docs-${b.id}" style="margin-bottom:8px"><span style="font-size:12px;color:#bbb">Laddar...</span></div>
+        <label style="display:inline-flex;align-items:center;gap:6px;background:#f5f5f0;border:1px dashed #ccc;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:#666;font-family:var(--font)">
+          + Ladda upp dokument
+          <input type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style="display:none" onchange="laddaUppBokDok('${b.id}', this.files)">
+        </label>
+      </div>
+
+      ${b.kommentar?`<div style="margin-top:12px;background:#f9f9f7;border-radius:8px;padding:10px 14px;font-size:12px;color:#666">💬 ${b.kommentar}</div>`:''}
+    </div>`;
+  }).join('');
+
+  // Ladda docs för varje bokning
+  data.forEach(b => laddaBokDoks(b.id));
+}
+
+async function laddaBokDoks(bokId){
+  const el = document.getElementById('bok-docs-'+bokId);
+  if(!el) return;
+  try {
+    const resp = await fetch(SB_URL+'/storage/v1/object/list/documents', {
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({prefix:'bokning-'+bokId+'/', limit:50})
+    });
+    const files = await resp.json();
+    if(!files?.length){ el.innerHTML='<span style="font-size:12px;color:#bbb">Inga dokument ännu</span>'; return; }
+    const signedLinks = await Promise.all(files.map(async f => {
+      const namn = f.name.split('/').pop();
+      try {
+        const signResp = await fetch(SB_URL+'/storage/v1/object/sign/bokningar-docs/bokning-'+bokId+'/'+encodeURIComponent(namn), {
+          method:'POST',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+          body: JSON.stringify({expiresIn: 3600})
+        });
+        const signData = await signResp.json();
+        const url = SB_URL+'/storage/v1'+signData.signedURL;
+        return `<a href="${url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#f0faf8;border:1px solid #b2dfdb;border-radius:8px;padding:5px 12px;font-size:12px;color:#00695c;text-decoration:none;margin-right:6px;margin-bottom:6px">📄 ${namn}</a>`;
+      } catch(e){ return ''; }
+    }));
+    el.innerHTML = signedLinks.join('');
+  } catch(e){ el.innerHTML='<span style="font-size:12px;color:#bbb">–</span>'; }
+}
+
+async function laddaUppBokDok(bokId, files){
+  for(const file of files){
+    const path = 'bokning-'+bokId+'/'+file.name;
+    await fetch(SB_URL+'/storage/v1/object/bokningar-docs/'+path, {
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'x-upsert':'true','Content-Type':file.type},
+      body: file
+    });
+  }
+  laddaBokDoks(bokId);
+  toast('✓ Dokument uppladdade!');
+}
+
+
+// ===== FÖRFRÅGNINGAR =====
+function uppdateraFalt(){
+  const typ    = document.getElementById('f-typ').value;
+  const lclFcl = document.getElementById('f-lcl-fcl').value;
+  const ltlFtl = document.getElementById('f-ltl-ftl').value;
+  const isSjo  = typ === 'Sjö';
+  const isFlyg = typ === 'Flyg';
+  const isRoad = typ === 'Road';
+
+  const show = (id, vis) => document.getElementById(id).style.display = vis ? 'flex' : 'none';
+  const showBlock = (id, vis) => document.getElementById(id).style.display = vis ? 'block' : 'none';
+
+  // Sjö
+  show('fg-sjo-lasttyp', isSjo);
+  show('fg-container',   isSjo && lclFcl==='FCL');
+
+  // Road
+  show('fg-road-lasttyp', isRoad);
+  show('fg-trailer',      isRoad);
+
+  // Mått per kolli — LCL, Flyg, LTL
+  const visaMatt = (isSjo && lclFcl==='LCL') || isFlyg || (isRoad && ltlFtl==='LTL');
+  const mattDiv = document.getElementById('fg-matt');
+  const varSynlig = mattDiv.style.display !== 'none';
+  showBlock('fg-matt', visaMatt);
+  // Lägg till startrad automatiskt om sektionen precis visades och inga rader finns
+  if(visaMatt && !varSynlig && document.getElementById('pall-rader').children.length === 0){
+    laggTillPall();
+  }
+}
+
+async function hamtaKundId(){
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token || SB_KEY;
+  const _kaResp = await fetch(SB_URL+'/rest/v1/kund_anvandare?user_id=eq.'+currentUser.id+'&select=kund_id&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
+  const _kaData = await _kaResp.json();
+  console.log('hamtaKundId:', currentUser.email, 'kund_anvandare:', JSON.stringify(_kaData));
+  if(_kaData?.[0]?.kund_id) return _kaData[0].kund_id;
+  return currentUser.id;
+}
+
+const ADMIN_EMAILS = ['andreas.karlsson@simpeltransport.se'];
+function erAdmin(){ return currentUser && ADMIN_EMAILS.includes(currentUser.email); }
+
+async function laddaForfragan(){
+  const filter = erAdmin() ? '' : '&kund_email=eq.'+encodeURIComponent(currentUser.email);
+  const _lfResp = await fetch(SB_URL+'/rest/v1/forfragan?select=*,erbjudande(*)'+filter+'&order=created_at.desc',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  const data = await _lfResp.json();
+  const error = _lfResp.ok ? null : data;
+  if(error){ console.error(error); return; }
+
+  if(!data?.length){
+    document.getElementById('forfragan-list').innerHTML = `<div class="empty"><div class="empty-icon">📦</div>${t("empty_title")}<br><small>${t("empty_sub")}</small></div>`;
+    return;
+  }
+
+  document.getElementById('forfragan-list').innerHTML = data.map(f => {
+    const badge = {ny:'badge-ny',skickad:'badge-skickad',erbjuden:'badge-erbjuden',accepterad:'badge-accepterad',avbokad:'badge-avbokad'}[f.status]||'badge-ny';
+    const datum = f.datum ? new Date(f.datum).toLocaleDateString('sv-SE') : '–';
+    const erbjudanden = f.erbjudande||[];
+    const erb = erbjudanden[0];
+
+    return `<div class="forfragan-card">
+      <div class="fc-top">
+        <div>
+          <div class="fc-title">${f.gods_typ||'Transport'}</div>
+          <div class="fc-meta">${erAdmin()&&f.kund_namn?'<strong>'+f.kund_namn+'</strong> · ':''} ${f.transport_typ||''} · Skickad ${new Date(f.created_at).toLocaleDateString('sv-SE')}</div>
+        </div>
+        <span class="badge ${badge}">${f.status}</span>
+      </div>
+      <div class="fc-route">
+        <span>${f.från_ort||'–'}</span>
+        <span class="fc-route-arrow">→</span>
+        <span>${f.till_ort||'–'}</span>
+      </div>
+      <div class="fc-details">
+        <div class="fc-detail">Datum: <span>${datum}</span></div>
+        ${f.vikt?`<div class="fc-detail">Vikt: <span>${f.vikt}</span></div>`:''}
+        ${f.volym?`<div class="fc-detail">Volym: <span>${f.volym}</span></div>`:''}
+        ${f.incoterms?`<div class="fc-detail">Incoterms: <span>${f.incoterms}</span></div>`:''}
+        ${f.lcl_fcl?`<div class="fc-detail"><span>${f.lcl_fcl}</span></div>`:''}
+        ${f.container?`<div class="fc-detail">Container: <span>${f.container}</span></div>`:''}
+        ${f.crd?`<div class="fc-detail">CRD: <span>${new Date(f.crd).toLocaleDateString('sv-SE')}</span></div>`:''}
+      </div>
+      ${erbjudanden.length && f.status==='erbjuden' ? erbjudanden.filter(e=>e.status!=='avböjt').map((e,i)=>`
+        <div class="erbjudande-card" style="${i>0?'margin-top:8px;':''}">
+          <div class="erb-title">🎉 ${erbjudanden.filter(e=>e.status!=='avböjt').length>1?'Alternativ '+(i+1)+': ':''}${e.transport_typ||'Erbjudande'}</div>
+          <div class="erb-pris">${Math.round(e.pris_forsaljning||0).toLocaleString('sv-SE')} kr</div>
+          <div class="erb-meta">Leveranstid: ${e.leveranstid||'–'} · Giltigt till: ${e.giltig_till||'–'}</div>
+          ${e.meddelande?`<div style="font-size:12px;color:#555;margin-top:8px;padding:10px;background:rgba(255,255,255,0.6);border-radius:6px">${e.meddelande}</div>`:''}
+          <div class="erb-actions">
+            <button class="btn-accept" onclick="accepteraErbjudande('${f.id}','${e.id}')">✓ Acceptera</button>
+            <button class="btn-decline" onclick="avbojErbjudande('${f.id}','${e.id}')">✕ Avböj</button>
+          </div>
+        </div>`).join('') : ''}
+      ${f.status==='accepterad'?`<div style="background:#e8f5e9;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px;color:#2e7d32;font-weight:500">✓ Du har accepterat detta erbjudande. Vi återkommer med bekräftelse!</div>`:''}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f0f0eb;display:flex;justify-content:space-between;align-items:center">
+        ${f.status==='avbokad' ? `<button onclick="taBortForfragan('${f.id}')" style="background:none;border:1px solid #ffcdd2;border-radius:7px;padding:6px 14px;font-size:12px;font-family:var(--font);cursor:pointer;color:#c62828">🗑 Ta bort</button>` : '<div></div>'}
+        <button onclick="oppnaRedigera('${f.id}','${f.status}')" style="background:none;border:1px solid #e8e8e2;border-radius:7px;padding:6px 14px;font-size:12px;font-family:var(--font);cursor:pointer;color:#888">✏️ Redigera</button>
+      </div>
+      <div id="docs-${f.id}"></div>
+    </div>`;
+  }).join('');
+
+  // Ladda docs för varje förfrågan
+  data.forEach(f => laddaForfraganDoks(f.id, 'docs-'+f.id));
+}
+
+async function skickaForfragan(){
+  const fran = document.getElementById('f-fran').value.trim();
+  const till = document.getElementById('f-till').value.trim();
+  const typ  = document.getElementById('f-typ').value;
+  if(!fran||!till||!typ){ toast(t('toast_err_fields')); return; }
+
+  var _fMsg = document.getElementById('f-meddelande').value;
+  if(document.getElementById('fg-matt').style.display!=='none'){
+    var _pallar = hamtaPallData();
+    if(_pallar && _pallar.length){
+      _fMsg += '\n\nKolli/Pallar:\n' + _pallar.map(function(p,i){
+        return (i+1)+'. Antal: '+p.antal+' | '+p.langd+'×'+p.bredd+'×'+p.hojd+' cm | '+p.vikt+' kg/kolli';
+      }).join('\n');
+    }
+  }
+  const kundId = await hamtaKundId();
+  const _fiResp = await fetch(SB_URL+'/rest/v1/forfragan', {
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body: JSON.stringify({
+      kund_id: kundId, kund_email: currentUser.email,
+      kund_namn: currentUser.user_metadata?.full_name||currentUser.email,
+      från_ort: fran, till_ort: till,
+      datum: document.getElementById('f-datum').value||null,
+      transport_typ: typ,
+      gods_typ: document.getElementById('f-gods').value,
+      vikt: document.getElementById('f-vikt').value,
+      volym: document.getElementById('f-volym').value,
+      incoterms: document.getElementById('f-incoterms').value,
+      crd: document.getElementById('f-crd').value||null,
+      lcl_fcl: document.getElementById('f-lcl-fcl').value || document.getElementById('f-ltl-ftl').value,
+      container: document.getElementById('f-container').value || document.getElementById('f-trailer').value,
+      meddelande: _fMsg,
+      status: 'ny',
+    })
+  });
+  const data = await _fiResp.json();
+  const error = _fiResp.ok ? null : data;
+  if(error){ toast('Error: '+(error.message||_fiResp.status)); return; }
+
+  // Ladda upp dokument om det finns några
+  if(nyaFiler.length && data && data[0]){
+    await laddaUppForfraganDokument(data[0].id);
+  }
+
+  toast(t('toast_submit'));
+  ['f-fran','f-till','f-datum','f-gods','f-vikt','f-volym','f-meddelande','f-crd'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['f-typ','f-incoterms','f-lcl-fcl','f-container','f-ltl-ftl','f-trailer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('pall-rader').innerHTML = '';
+  pallRaderCount = 0;
+  uppdateraFalt();
+  showTab('mina', document.querySelector('.tab'));
+}
+
+async function accepteraErbjudande(forfraganId, erbjudandeId){
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token || SB_KEY;
+  const _hAcc={'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'};
+  await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+forfraganId,{method:'PATCH',headers:_hAcc,body:JSON.stringify({status:'accepterad'})});
+  await fetch(SB_URL+'/rest/v1/erbjudande?id=eq.'+erbjudandeId,{method:'PATCH',headers:_hAcc,body:JSON.stringify({status:'accepterat'})});
+  toast(t('toast_accept'));
+  laddaForfragan();
+}
+
+async function avbojErbjudande(forfraganId, erbjudandeId){
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token || SB_KEY;
+  const _hAvb={'apikey':SB_KEY,'Authorization':'Bearer '+token,'Content-Type':'application/json','Prefer':'return=minimal'};
+  await fetch(SB_URL+'/rest/v1/erbjudande?id=eq.'+erbjudandeId,{method:'PATCH',headers:_hAvb,body:JSON.stringify({status:'avböjt'})});
+  await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+forfraganId,{method:'PATCH',headers:_hAvb,body:JSON.stringify({status:'ny'})});
+  toast(t('toast_decline'));
+  laddaForfragan();
+}
+
+// ===== REDIGERA FÖRFRÅGAN =====
+let redigerarId = null;
+let redigerarData = null;
+
+async function oppnaRedigera(id, status){
+  // Hämta aktuell data
+  const _rfResp = await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+id+'&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  const _rfData = await _rfResp.json();
+  const data = _rfData[0]||null; const error = _rfResp.ok ? null : _rfData;
+  if(error || !data){ toast(t('toast_err_fetch')); return; }
+
+  redigerarId = id;
+  redigerarData = data;
+
+  const lasst = status !== 'ny';
+  document.getElementById('edit-modal-title').textContent = data.gods_typ || 'Redigera förfrågan';
+  document.getElementById('edit-warning').style.display = lasst ? 'block' : 'none';
+  document.getElementById('edit-form').style.display = lasst ? 'none' : 'block';
+
+  if(!lasst){
+    // Fyll i formuläret
+    document.getElementById('ef-fran').value      = data.från_ort || '';
+    document.getElementById('ef-till').value      = data.till_ort || '';
+    document.getElementById('ef-datum').value     = data.datum || '';
+    document.getElementById('ef-typ').value       = data.transport_typ || '';
+    document.getElementById('ef-gods').value      = data.gods_typ || '';
+    document.getElementById('ef-vikt').value      = data.vikt || '';
+    document.getElementById('ef-volym').value     = data.volym || '';
+    document.getElementById('ef-incoterms').value = data.incoterms || '';
+    document.getElementById('ef-crd').value       = data.crd || '';
+    document.getElementById('ef-lcl-fcl').value   = data.lcl_fcl || '';
+    document.getElementById('ef-container').value = data.container || '';
+    document.getElementById('ef-meddelande').value= data.meddelande || '';
+  }
+
+  // Ladda befintliga docs
+  laddaForfraganDoks(id, 'ef-docs-list');
+
+  document.getElementById('edit-overlay').style.display = 'flex';
+}
+
+function stangRedigera(){
+  document.getElementById('edit-overlay').style.display = 'none';
+  redigerarId = null;
+}
+
+async function taBortForfragan(id){
+  if(!confirm('Ta bort denna förfrågan permanent? Det går inte att ångra.')) return;
+  const _hDel={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  await fetch(SB_URL+'/rest/v1/anbud?forfragan_id=eq.'+id,{method:'DELETE',headers:_hDel});
+  await fetch(SB_URL+'/rest/v1/forfragan_partners?forfragan_id=eq.'+id,{method:'DELETE',headers:_hDel});
+  await fetch(SB_URL+'/rest/v1/erbjudande?forfragan_id=eq.'+id,{method:'DELETE',headers:_hDel});
+  const _fDel = await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+id,{method:'DELETE',headers:_hDel});
+  const error = _fDel.ok ? null : {message: _fDel.status};
+  if(error){ toast('Fel: '+error.message); return; }
+  toast('🗑 Förfrågan borttagen');
+  laddaForfragan();
+}
+
+async function sparaRedigering(){
+  if(!redigerarId) return;
+  const uppdatering = {
+    från_ort:     document.getElementById('ef-fran').value.trim(),
+    till_ort:     document.getElementById('ef-till').value.trim(),
+    datum:        document.getElementById('ef-datum').value || null,
+    transport_typ:document.getElementById('ef-typ').value,
+    gods_typ:     document.getElementById('ef-gods').value,
+    vikt:         document.getElementById('ef-vikt').value,
+    volym:        document.getElementById('ef-volym').value,
+    incoterms:    document.getElementById('ef-incoterms').value,
+    crd:          document.getElementById('ef-crd').value || null,
+    lcl_fcl:      document.getElementById('ef-lcl-fcl').value,
+    container:    document.getElementById('ef-container').value,
+    meddelande:   document.getElementById('ef-meddelande').value,
+  };
+  if(!uppdatering.från_ort || !uppdatering.till_ort){ toast(t('toast_err_from_to')); return; }
+  const _hUpd={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const _updResp = await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+redigerarId,{method:'PATCH',headers:_hUpd,body:JSON.stringify(uppdatering)});
+  const error = _updResp.ok ? null : {message: _updResp.status};
+  if(error){ toast('Error: '+error.message); return; }
+  toast(t('toast_updated'));
+  stangRedigera();
+  laddaForfragan();
+}
+
+
+// ===== DOKUMENT PÅ FÖRFRÅGNINGAR =====
+const SB_STORAGE = 'https://tahwecikznaomcppqadf.supabase.co/storage/v1';
+var nyaFiler = []; // Filer som ska laddas upp när förfrågan skapas
+
+function hanteraNyaFiler(files){
+  Array.from(files).forEach(function(f){
+    nyaFiler.push(f);
+  });
+  renderNyaFiler();
+}
+
+function renderNyaFiler(){
+  var el = document.getElementById('f-docs-list');
+  if(!el) return;
+  el.innerHTML = nyaFiler.map(function(f, i){
+    var ext = f.name.split('.').pop().toLowerCase();
+    var icon = ext==='pdf'?'📄':ext==='xlsx'||ext==='xls'?'📊':ext==='docx'||ext==='doc'?'📝':'🖼';
+    return '<div style="display:inline-flex;align-items:center;gap:6px;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:6px;padding:4px 10px;font-size:12px">'+
+      icon+' '+f.name+
+      '<button onclick="taBortNyFil('+i+')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;padding:0;line-height:1">×</button>'+
+    '</div>';
+  }).join('');
+}
+
+function taBortNyFil(i){
+  nyaFiler.splice(i, 1);
+  renderNyaFiler();
+}
+
+async function laddaUppForfraganDokument(forfraganId){
+  if(!nyaFiler.length) return;
+  for(var i=0; i<nyaFiler.length; i++){
+    var f = nyaFiler[i];
+    await fetch(SB_STORAGE+'/object/bokningar-docs/forfragan-'+forfraganId+'/'+f.name, {
+      method:'PUT',
+      headers:{'Content-Type': 'application/json','Content-Type':f.type||'application/octet-stream','x-upsert':'true'},
+      body:f
+    });
+  }
+  nyaFiler = [];
+  renderNyaFiler();
+}
+
+async function laddaForfraganDoks(forfraganId, elId){
+  var el = document.getElementById(elId);
+  if(!el) return;
+  try {
+    var resp = await fetch(SB_STORAGE+'/object/list/documents', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({prefix:'forfragan-'+forfraganId+'/',limit:50,offset:0,sortBy:{column:'name',order:'asc'}})
+    });
+    var files = await resp.json();
+    if(!Array.isArray(files)||!files.length){ el.innerHTML=''; return; }
+    // Hämta signed URLs för alla filer parallellt
+    const signedFiles = await Promise.all(files.map(async function(f){
+      try {
+        var signResp = await fetch(SB_STORAGE+'/object/sign/documents/forfragan-'+forfraganId+'/'+f.name, {
+          method:'POST',
+          headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+          body: JSON.stringify({expiresIn: 3600})
+        });
+        var signData = await signResp.json();
+        var url = SB_URL+'/storage/v1'+signData.signedURL;
+        return {name: f.name, url: url};
+      } catch(e){ return {name: f.name, url: '#'}; }
+    }));
+    el.innerHTML = '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0eb">'+
+      '<div style="font-size:11px;font-weight:500;color:#888;margin-bottom:6px">📎 Dokument</div>'+
+      signedFiles.map(function(sf){
+        var ext = sf.name.split('.').pop().toLowerCase();
+        var icon = ext==='pdf'?'📄':ext==='xlsx'||ext==='xls'?'📊':ext==='docx'||ext==='doc'?'📝':'🖼';
+        return '<div style="display:inline-flex;align-items:center;gap:5px;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:6px;padding:4px 10px;font-size:12px;margin-right:6px;margin-bottom:4px">'+
+          '<a href="'+sf.url+'" target="_blank" style="color:#555;text-decoration:none">'+icon+' '+sf.name+'</a>'+
+          '<button onclick="raderaForfraganDok(\''+forfraganId+'\',\''+sf.name.replace(/'/g,"\\'")+'\',\''+elId+'\')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:0;line-height:1;margin-left:4px">×</button>'+
+        '</div>';
+      }).join('')+
+    '</div>';
+  } catch(e){ el.innerHTML=''; }
+}
+
+
+async function raderaForfraganDok(forfraganId, filnamn, elId){
+  if(!confirm('Ta bort '+filnamn+'?')) return;
+  await fetch(SB_STORAGE+'/object/bokningar-docs/forfragan-'+forfraganId+'/'+filnamn, {
+    method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  laddaForfraganDoks(forfraganId, elId);
+}
+
+async function laddaUppForfraganDok(files){
+  if(!redigerarId) return;
+  var arr = Array.from(files);
+  for(var i=0; i<arr.length; i++){
+    var f = arr[i];
+    await fetch(SB_STORAGE+'/object/bokningar-docs/forfragan-'+redigerarId+'/'+f.name, {
+      method:'PUT',
+      headers:{'Content-Type': 'application/json','Content-Type':f.type||'application/octet-stream','x-upsert':'true'},
+      body:f
+    });
+  }
+  document.getElementById('ef-docs-input').value='';
+  laddaForfraganDoks(redigerarId, 'ef-docs-list');
+  toast('✓ Dokument uppladdade!');
+}
+
+// ===== I18N =====
+const T = {
+  sv: {
+    portal_name:'Offertportal', auth_sub:'Logga in för att begära offert eller se dina erbjudanden',
+    login:'Logga in', register:'Registrera', password:'Lösenord', name_company:'Namn / Företag',
+    name_ph:'Ditt namn eller företag', min6:'Minst 6 tecken', create_account:'Skapa konto',
+    btn_logout:'Logga ut', my_requests:'Mina förfrågningar',
+    page_sub:'Begär offert för dina transporter och följ dina erbjudanden',
+    tab_mina:'📋 Mina förfrågningar', tab_ny:'+ Ny förfrågan',
+    empty_title:'Inga förfrågningar ännu', empty_sub:'Klicka "+ Ny förfrågan" för att komma igång',
+    new_req_title:'✉️ Ny transportförfrågan',
+    from:'Från (ort/land)', to:'Till (ort/land)',
+    from_ph:'t.ex. Shanghai, Kina', to_ph:'t.ex. Stockholm, Sverige',
+    req_date:'Önskat datum', transport_type:'Transporttyp', select_type:'Välj typ...',
+    sea:'🚢 Sjöfrakt', air:'✈ Flygfrakt', road:'🚛 Landtransport',
+    cargo_type:'Godstyp / Beskrivning', cargo_ph:'t.ex. elektronik, möbler...',
+    weight:'Vikt (kg)', weight_ph:'t.ex. 500 kg',
+    volume:'Volym / Storlek', volume_ph:'t.ex. 9 pallar',
+    incoterms:'Incoterms', select_incoterms:'Välj Incoterms...',
+    crd:'CRD (Cargo Ready Date)', fcl_lcl:'FCL / LCL', select:'Välj...',
+    container_type:'Containertyp', select_container:'Välj containertyp...',
+    ltl_ftl:'LTL / FTL', trailer_type:'Trailertyp', select_trailer:'Välj trailertyp...',
+    pallets:'Kolli / Pallar — mått & vikt', add_row:'+ Lägg till rad',
+    qty:'Antal', length:'Längd (cm)', width:'Bredd (cm)', height:'Höjd (cm)', weight_pkg:'Vikt/kolli (kg)',
+    special:'Övrigt / Speciella krav', special_ph:'Temperaturkrav, farligt gods, speciell hantering...',
+    cancel:'Avbryt', submit:'📤 Skicka förfrågan',
+    edit_btn:'✏️ Redigera', locked_title:'Förfrågan är låst',
+    locked_msg:'Denna förfrågan är redan skickad till partners och kan inte redigeras. Kontakta oss så hjälper vi dig med ändringar.',
+    edit_title:'Redigera förfrågan', save:'💾 Spara ändringar',
+    accept:'✓ Acceptera', decline:'✕ Avböj',
+    offer_received:'🎉 Du har fått ett erbjudande!',
+    transit:'Leveranstid:', valid:'Giltigt till:',
+    accepted_msg:'✓ Du har accepterat detta erbjudande. Vi återkommer med bekräftelse!',
+    toast_submit:'✓ Förfrågan skickad! Vi återkommer snart.',
+    toast_accept:'✓ Erbjudande accepterat! Vi bekräftar din bokning.',
+    toast_decline:'Erbjudande avböjt. Vi söker alternativ.',
+    toast_updated:'✓ Förfrågan uppdaterad!',
+    toast_err_fields:'Fyll i från, till och transporttyp',
+    toast_err_fetch:'Kunde inte hämta förfrågan',
+    toast_err_from_to:'Fyll i från och till',
+    err_login:'Fyll i email och lösenord', err_all:'Fyll i alla fält',
+    confirm_email:'Kolla din email för att bekräfta kontot!',
+  },
+  en: {
+    portal_name:'Quote Portal', auth_sub:'Log in to request a quote or view your offers',
+    login:'Log in', register:'Register', password:'Password', name_company:'Name / Company',
+    name_ph:'Your name or company', min6:'At least 6 characters', create_account:'Create account',
+    btn_logout:'Log out', my_requests:'My requests',
+    page_sub:'Request quotes for your shipments and track your offers',
+    tab_mina:'📋 My requests', tab_ny:'+ New request',
+    empty_title:'No requests yet', empty_sub:'Click "+ New request" to get started',
+    new_req_title:'✉️ New transport request',
+    from:'From (city/country)', to:'To (city/country)',
+    from_ph:'e.g. Shanghai, China', to_ph:'e.g. Stockholm, Sweden',
+    req_date:'Requested date', transport_type:'Transport type', select_type:'Select type...',
+    sea:'🚢 Sea freight', air:'✈ Air freight', road:'🚛 Road transport',
+    cargo_type:'Cargo type / Description', cargo_ph:'e.g. electronics, furniture...',
+    weight:'Weight (kg)', weight_ph:'e.g. 500 kg',
+    volume:'Volume / Size', volume_ph:'e.g. 9 pallets',
+    incoterms:'Incoterms', select_incoterms:'Select Incoterms...',
+    crd:'CRD (Cargo Ready Date)', fcl_lcl:'FCL / LCL', select:'Select...',
+    container_type:'Container type', select_container:'Select container type...',
+    ltl_ftl:'LTL / FTL', trailer_type:'Trailer type', select_trailer:'Select trailer type...',
+    pallets:'Packages / Pallets — dimensions & weight', add_row:'+ Add row',
+    qty:'Qty', length:'Length (cm)', width:'Width (cm)', height:'Height (cm)', weight_pkg:'Weight/pkg (kg)',
+    special:'Other / Special requirements', special_ph:'Temperature requirements, dangerous goods, special handling...',
+    cancel:'Cancel', submit:'📤 Submit request',
+    edit_btn:'✏️ Edit', locked_title:'Request is locked',
+    locked_msg:'This request has already been sent to partners and cannot be edited. Contact us and we will help you make changes.',
+    edit_title:'Edit request', save:'💾 Save changes',
+    accept:'✓ Accept', decline:'✕ Decline',
+    offer_received:'🎉 You have received an offer!',
+    transit:'Transit time:', valid:'Valid until:',
+    accepted_msg:'✓ You have accepted this offer. We will confirm your booking shortly!',
+    toast_submit:'✓ Request submitted! We will get back to you shortly.',
+    toast_accept:'✓ Offer accepted! We will confirm your booking.',
+    toast_decline:'Offer declined. We will look for alternatives.',
+    toast_updated:'✓ Request updated!',
+    toast_err_fields:'Please fill in from, to and transport type',
+    toast_err_fetch:'Could not fetch request',
+    toast_err_from_to:'Please fill in from and to',
+    err_login:'Please enter email and password', err_all:'Please fill in all fields',
+    confirm_email:'Check your email to confirm your account!',
+  }
+};
+let lang = localStorage.getItem('simptra_lang') || 'sv';
+
+async function setLang(l, switchEl) {
+  lang = l;
+  localStorage.setItem('simptra_lang', l);
+  // Uppdatera alla switchar
+  document.querySelectorAll('.lang-btn,.lang-btn-auth').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === l);
+  });
+  applyLang();
+  // Spara i Supabase om inloggad
+  if(currentUser) {
+    const _tkResp = await fetch(SB_URL+'/rest/v1/transport_kunder?email=eq.'+encodeURIComponent(currentUser.email)+'&select=id&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const _tkData = await _tkResp.json();
+    if(_tkData[0]) await fetch(SB_URL+'/rest/v1/transport_kunder?id=eq.'+_tkData[0].id,{method:'PATCH',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({lang:l})});
+  }
+}
+
+function t(key){ return T[lang][key] || T['sv'][key] || key; }
+
+function applyLang(){
+  const L = T[lang];
+  // data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if(L[k]) el.textContent = L[k];
+  });
+  // placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const k = el.getAttribute('data-i18n-ph');
+    if(L[k]) el.placeholder = L[k];
+  });
+  // Specifika element
+  const set = (id, k) => { const el=document.getElementById(id); if(el&&L[k]) el.textContent=L[k]; };
+  const setPh = (id, k) => { const el=document.getElementById(id); if(el&&L[k]) el.placeholder=L[k]; };
+  set('btn-logout', 'btn_logout');
+  set('page-title-el', 'my_requests');
+  set('page-sub-el', 'page_sub');
+  set('tab-mina-btn', 'tab_mina');
+  set('tab-ny-btn', 'tab_ny');
+  set('new-req-title', 'new_req_title');
+  setPh('f-fran', 'from_ph'); setPh('f-till', 'to_ph');
+  setPh('f-gods', 'cargo_ph'); setPh('f-vikt', 'weight_ph');
+  setPh('f-volym', 'volume_ph'); setPh('f-meddelande', 'special_ph');
+  // Labels via fl-class + for
+  const labels = {
+    'lbl-fran':'from','lbl-till':'to','lbl-datum':'req_date','lbl-typ':'transport_type',
+    'lbl-gods':'cargo_type','lbl-vikt':'weight','lbl-volym':'volume','lbl-incoterms':'incoterms',
+    'lbl-crd':'crd','lbl-sjo-lasttyp':'fcl_lcl','lbl-container':'container_type',
+    'lbl-road-lasttyp':'ltl_ftl','lbl-trailer':'trailer_type','lbl-special':'special',
+    'lbl-pallar':'pallets',
+  };
+  Object.entries(labels).forEach(([id,k])=>{ const el=document.getElementById(id); if(el&&L[k]) el.textContent=L[k]; });
+  // Select options
+  const selTyp = document.getElementById('f-typ');
+  if(selTyp){ selTyp.options[0].text=L.select_type; selTyp.options[1].text=L.sea; selTyp.options[2].text=L.air; selTyp.options[3].text=L.road; }
+  const selInco = document.getElementById('f-incoterms');
+  if(selInco) selInco.options[0].text = L.select_incoterms;
+  const selLcl = document.getElementById('f-lcl-fcl');
+  if(selLcl) selLcl.options[0].text = L.select;
+  const selCont = document.getElementById('f-container');
+  if(selCont) selCont.options[0].text = L.select_container;
+  const selLtl = document.getElementById('f-ltl-ftl');
+  if(selLtl) selLtl.options[0].text = L.select;
+  const selTrl = document.getElementById('f-trailer');
+  if(selTrl) selTrl.options[0].text = L.select_trailer;
+  // Knappar
+  const btnAddRow = document.getElementById('btn-add-pall');
+  if(btnAddRow) btnAddRow.textContent = L.add_row;
+  const btnCancel = document.getElementById('btn-cancel');
+  if(btnCancel) btnCancel.textContent = L.cancel;
+  const btnSubmit = document.getElementById('btn-submit');
+  if(btnSubmit) btnSubmit.textContent = L.submit;
+  // Auth
+  const authSub = document.getElementById('auth-sub');
+  if(authSub) authSub.textContent = L.auth_sub;
+  const loginBtn = document.getElementById('btn-login');
+  if(loginBtn) loginBtn.textContent = L.login;
+  const regBtn = document.getElementById('btn-register');
+  if(regBtn) regBtn.textContent = L.create_account;
+  const tabLogin = document.getElementById('tab-login');
+  if(tabLogin) tabLogin.textContent = L.login;
+  const tabReg = document.getElementById('tab-register');
+  if(tabReg) tabReg.textContent = L.register;
+  const lblPwd1 = document.getElementById('lbl-pwd1');
+  if(lblPwd1) lblPwd1.textContent = L.password;
+  const lblPwd2 = document.getElementById('lbl-pwd2');
+  if(lblPwd2) lblPwd2.textContent = L.password;
+  const lblName = document.getElementById('lbl-name');
+  if(lblName) lblName.textContent = L.name_company;
+  const inpName = document.getElementById('reg-namn');
+  if(inpName) inpName.placeholder = L.name_ph;
+  const inpPwd2 = document.getElementById('reg-password');
+  if(inpPwd2) inpPwd2.placeholder = L.min6;
+}
+
+// Kör vid start
+document.addEventListener('DOMContentLoaded', ()=>{ 
+  document.querySelectorAll('.lang-btn,.lang-btn-auth').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase()===lang);
+  });
+  applyLang(); 
+});
+
+async function laddaLangFranSupabase(email) {
+  const _glResp = await fetch(SB_URL+'/rest/v1/transport_kunder?email=eq.'+encodeURIComponent(email)+'&select=lang&limit=1',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  const _glData = await _glResp.json();
+  const data = _glData[0]||null;
+  if(data?.lang && data.lang !== lang) {
+    lang = data.lang;
+    localStorage.setItem('simptra_lang', lang);
+    document.querySelectorAll('.lang-btn,.lang-btn-auth').forEach(b=>{
+      b.classList.toggle('active', b.textContent.toLowerCase()===lang);
+    });
+    applyLang();
+  }
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ===== BRANDING =====
+async function laddaBranding(){
+  try {
+    const domän = window.location.hostname;
+    const resp = await fetch('https://tahwecikznaomcppqadf.supabase.co/rest/v1/tenants?domän=eq.'+encodeURIComponent(domän)+'&select=*&limit=1', {
+      headers: {'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E'}
+    });
+    const data = await resp.json();
+    const tenant = data?.[0];
+    if(!tenant) return;
+
+    const p1 = '#' + (tenant.primär_färg || '009688');
+    const p2 = '#' + (tenant.sekundär_färg || '00796B');
+
+    // CSS-variabler
+    document.documentElement.style.setProperty('--accent', p1);
+    document.documentElement.style.setProperty('--accent2', p2);
+
+    // Gradient-bakgrund på overlay/login
+    document.querySelectorAll('.overlay').forEach(el => {
+      el.style.background = `linear-gradient(135deg, ${p1} 0%, ${p2} 60%, #1565c0 100%)`;
+    });
+
+    // Header-bakgrund
+    const header = document.querySelector('.header');
+    if(header) header.style.background = `linear-gradient(135deg, ${p1}, ${p2})`;
+
+    // Logotyp
+    const logoText = tenant.logo_text || 'SIMPTRA';
+    document.querySelectorAll('.modal-logo, .header-logo').forEach(el => { el.textContent = logoText; });
+    document.title = logoText + ' — ' + (tenant.portal_titel || 'Portal');
+
+    // Footer
+    document.querySelectorAll('.footer').forEach(el => { el.textContent = tenant.namn + ' · ' + (tenant.footer_text || ''); });
+
+    sessionStorage.setItem('tenant_id', tenant.id);
+    sessionStorage.setItem('tenant_namn', tenant.namn);
+  } catch(e) { console.warn('Branding:', e); }
+}
+
+laddaBranding();
+</script>
+</body>
+</html>

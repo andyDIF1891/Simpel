@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>CMR Fraktsedel</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
+  color: #000;
+  background: #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+.print-btn {
+  background: #009688;
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: Arial;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.cmr {
+  width: 210mm;
+  background: #fff;
+  border: 1.5px solid #000;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.stamp {
+  position: absolute;
+  font-size: 120px;
+  font-weight: 900;
+  color: rgba(0,0,0,0.04);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  letter-spacing: -0.05em;
+  z-index: 0;
+}
+.hdr { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1.5px solid #000; }
+.hdr-l { border-right: 1.5px solid #000; padding: 6px 8px; position: relative; }
+.hdr-r { padding: 6px 8px; }
+.lbl { font-size: 7px; font-weight: 700; text-transform: uppercase; color: #555; letter-spacing: 0.04em; margin-bottom: 3px; }
+.num { float: right; font-size: 7px; color: #999; font-weight: 700; }
+.row2 { display: grid; border-bottom: 1px solid #000; }
+.cell { padding: 5px 7px; position: relative; min-height: 52px; }
+.br { border-right: 1px solid #000; }
+.val { line-height: 1.6; white-space: pre-line; }
+.title { font-size: 13px; font-weight: 900; letter-spacing: 0.05em; }
+.sub { font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+.legal { font-size: 6.5px; line-height: 1.4; color: #333; margin-top: 3px; }
+.meta-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 2px; }
+.meta-lbl { font-size: 8px; font-weight: 700; min-width: 90px; white-space: nowrap; }
+.meta-val { font-size: 10px; border-bottom: 1px solid #ccc; flex: 1; padding: 0 2px; min-height: 14px; }
+.goods-tbl { width: 100%; border-collapse: collapse; }
+.goods-tbl th { font-size: 7px; font-weight: 700; text-transform: uppercase; background: #fafafa; border-bottom: 1px solid #000; border-right: 1px solid #ccc; padding: 3px 4px; text-align: left; color: #444; }
+.goods-tbl td { border-right: 1px solid #ccc; border-bottom: 1px solid #eee; padding: 3px 4px; min-height: 16px; }
+.goods-tbl th:last-child, .goods-tbl td:last-child { border-right: none; }
+.pay-row { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #000; }
+.pay-tbl { width: 100%; border-collapse: collapse; }
+.pay-tbl td { padding: 2px 5px; border-bottom: 1px solid #eee; font-size: 9px; }
+.pay-tbl td+td { border-left: 1px solid #eee; width: 65px; }
+.sig { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid #000; }
+.sig-cell { padding: 5px 7px; border-right: 1px solid #000; min-height: 75px; }
+.sig-cell:last-child { border-right: none; }
+.sig-line { border: 1px dashed #ccc; height: 50px; margin: 5px 0 4px; border-radius: 2px; }
+.footer { font-size: 6.5px; color: #555; padding: 3px 7px; border-top: 1px solid #000; text-align: center; }
+
+@media print {
+  body { background: #fff; padding: 0; display: block; width: 100%; }
+  .cmr { width: 100%; }
+  .print-btn { display: none !important; }
+  .cmr { width: 100%; box-shadow: none; }
+  @page { margin: 5mm; size: A4 portrait; }
+}
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨 Skriv ut / Spara PDF</button>
+
+<div class="cmr" id="cmr-doc">
+  <div class="stamp">CMR</div>
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-l">
+      <div class="lbl">Avsändare (Namn, Adress, Land) <span class="num">1</span></div>
+      <div class="val" id="f-sender"></div>
+    </div>
+    <div class="hdr-r">
+      <div class="title">INTERNATIONALER FRACHTBRIEF</div>
+      <div class="sub">INTERNATIONAL CONSIGNMENT NOTE</div>
+      <div class="legal">Diese Beförderung unterliegt trotz einer gegenteiligen Abmachung den Bestimmungen des Übereinkommens über den Beförderungsvertrag im Internationalen Strassengüterverkehr (CMR) / This carriage is subject, notwithstanding any clause to the contrary, to the Convention on the Contract for the International Carriage of Goods by Road (CMR)</div>
+      <div style="margin-top:5px">
+        <div class="meta-row"><span class="meta-lbl">Order nr. / Ref:</span><span class="meta-val" id="f-ref"></span></div>
+        <div class="meta-row"><span class="meta-lbl">Project:</span><span class="meta-val" id="f-project"></span></div>
+        <div class="meta-row"><span class="meta-lbl">Customer ref.:</span><span class="meta-val" id="f-custref"></span></div>
+        <div class="meta-row"><span class="meta-lbl">Datum:</span><span class="meta-val" id="f-datum"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOTTAGARE + TRANSPORTÖR -->
+  <div class="row2" style="grid-template-columns:1fr 1fr">
+    <div class="cell br"><div class="lbl">Mottagare (Namn, Adress, Land) <span class="num">2</span></div><div class="val" id="f-consignee"></div></div>
+    <div class="cell"><div class="lbl">Transportör (Namn, Adress) <span class="num">16</span></div><div class="val" id="f-carrier"></div></div>
+  </div>
+
+  <!-- LEVERANSPLATS -->
+  <div class="row2" style="grid-template-columns:1fr 1fr">
+    <div class="cell br"><div class="lbl">Leveransplats (Namn, Adress, Land) <span class="num">3</span></div><div class="val" id="f-delivery"></div></div>
+    <div class="cell"><div class="lbl">Successiva transportörer (Namn, Adress, Land) <span class="num">17</span></div><div class="val" id="f-successive"></div></div>
+  </div>
+
+  <!-- PLATS+DATUM -->
+  <div class="row2" style="grid-template-columns:1fr 1fr">
+    <div class="cell br">
+      <div class="lbl">Plats och datum för godsets övertagande <span class="num">4</span></div>
+      <div style="display:flex;gap:24px;margin-top:4px">
+        <div><div style="font-size:7px;color:#888;margin-bottom:2px">Plats</div><div id="f-pick-place"></div></div>
+        <div><div style="font-size:7px;color:#888;margin-bottom:2px">Datum</div><div id="f-pick-date"></div></div>
+      </div>
+    </div>
+    <div class="cell"><div class="lbl">Transportörens reservationer och iakttagelser <span class="num">18</span></div><div class="val" id="f-reserv"></div></div>
+  </div>
+
+  <!-- BILAGDA -->
+  <div class="row2" style="grid-template-columns:1fr 1fr;border-bottom:1px solid #000">
+    <div class="cell br"><div class="lbl">Bilagda handlingar <span class="num">5</span></div><div class="val" id="f-annexes"></div></div>
+    <div class="cell" style="background:#fafafa"></div>
+  </div>
+
+  <!-- GODS -->
+  <div style="border-bottom:1px solid #000">
+    <table class="goods-tbl">
+      <thead><tr>
+        <th style="width:15%">Märken &amp; Nummer <span style="font-weight:400;color:#aaa">10</span></th>
+        <th style="width:9%">Antal kolli <span style="font-weight:400;color:#aaa">10</span></th>
+        <th style="width:12%">Förpackningssätt <span style="font-weight:400;color:#aaa">11</span></th>
+        <th style="width:27%">Godsets beskaffenhet <span style="font-weight:400;color:#aaa">12</span></th>
+        <th style="width:10%">Statistiknr <span style="font-weight:400;color:#aaa">13</span></th>
+        <th style="width:13%">Bruttovikt (kg) <span style="font-weight:400;color:#aaa">14</span></th>
+        <th style="width:14%">Volym (m³)/LDM <span style="font-weight:400;color:#aaa">15</span></th>
+      </tr></thead>
+      <tbody id="f-goods"></tbody>
+    </table>
+  </div>
+
+  <!-- INSTRUKTIONER + BETALNING -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #000">
+    <div class="cell br"><div class="lbl">Avsändarens instruktioner (tull och andra formaliteter) <span class="num">13</span></div><div class="val" id="f-instructions"></div></div>
+    <div style="padding:0;position:relative">
+      <div style="position:absolute;top:3px;right:5px;font-size:7px;color:#999;font-weight:700">19</div>
+      <div style="padding:3px 6px 2px;font-size:7px;font-weight:700;text-transform:uppercase;color:#444;border-bottom:1px solid #ccc">Betalas av: Avsändare / Valuta / Mottagare</div>
+      <table class="pay-tbl">
+        <tr><td>Fraktkostnad</td><td></td><td style="width:40px">SEK</td><td></td></tr>
+        <tr><td>Tilläggskostnad</td><td></td><td></td><td></td></tr>
+        <tr><td>Övriga avgifter</td><td></td><td></td><td></td></tr>
+        <tr><td style="font-weight:700">Totalt att betala</td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- POSTFÖRSKOTT + SPECIALAVTAL -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid #000">
+    <div class="cell br"><div class="lbl">Postförskott <span class="num">14</span></div></div>
+    <div class="cell br"><div class="lbl">Specialavtal <span class="num">20</span></div></div>
+    <div class="cell"><div class="lbl">Direktiv ang. betalning av frakten <span class="num">15</span></div></div>
+  </div>
+
+  <!-- UPPRÄTTAD + GODS MOTTAGET -->
+  <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1fr;border-bottom:1px solid #000">
+    <div class="cell br"><div class="lbl">Upprättad i <span class="num">21</span></div></div>
+    <div class="cell br" style="padding:4px 10px;display:flex;align-items:flex-end;font-size:9px;white-space:nowrap">den</div>
+    <div class="cell br"><div id="f-established-date" style="margin-top:14px"></div></div>
+    <div class="cell br" style="padding:4px 10px;display:flex;align-items:flex-end;white-space:nowrap;min-width:80px"><div><div class="lbl">Gods mottaget <span class="num">24</span></div></div></div>
+    <div class="cell"><div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><div style="font-size:7px;color:#888;margin-bottom:2px">Plats</div></div><div style="flex:1"><div style="font-size:7px;color:#888;margin-bottom:2px">Datum</div></div></div></div>
+  </div>
+
+  <!-- SIGNATURER -->
+  <div class="sig">
+    <div class="sig-cell"><div class="lbl">Avsändarens underskrift och stämpel <span class="num">22</span></div><div class="sig-line"></div></div>
+    <div class="sig-cell"><div class="lbl">Transportörens underskrift och stämpel <span class="num">23</span></div><div class="sig-line"></div></div>
+    <div class="sig-cell"><div class="lbl">Mottagarens underskrift och stämpel</div><div class="sig-line"></div></div>
+  </div>
+
+  <div class="footer">Bei gefährlichen Gütern ist ausser der eventuellen Bescheinigung, auf der letzten Linie der Rubrik anzugeben: die Klasse, die Ziffer sowie gegebenenfalls der Buchstabe. / In case of dangerous goods mention, besides the possible certification, on the last line of the column the particulars of the class, the number and letter, if any. <span style="float:right">Sid: 1 / 1</span></div>
+</div>
+
+<script>
+// Läs data från sessionStorage
+const raw = sessionStorage.getItem('cmr_data');
+if(raw){
+  const d = JSON.parse(raw);
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val||''; };
+  set('f-sender', d.sender);
+  set('f-ref', d.ref);
+  set('f-project', d.project);
+  set('f-custref', d.custref);
+  set('f-datum', d.datum);
+  set('f-consignee', d.consignee);
+  set('f-carrier', d.carrier);
+  set('f-delivery', d.delivery);
+  set('f-successive', d.successive);
+  set('f-pick-place', d.pickPlace);
+  set('f-pick-date', d.pickDate);
+  set('f-reserv', d.reserv);
+  set('f-annexes', d.annexes);
+  set('f-instructions', d.instructions);
+  set('f-established-date', d.datum);
+
+  // Godstabellrader
+  const tbody = document.getElementById('f-goods');
+  if(d.goods && d.goods.length > 0){
+    d.goods.forEach(row => {
+      const tr = document.createElement('tr');
+      row.forEach(val => {
+        const td = document.createElement('td');
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  } else {
+    // Tom rad om inga godsposter
+    tbody.innerHTML = '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+  }
+}
+</script>
+</body>
+</html>

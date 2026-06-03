@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpel Transport — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f0eb;--surface:#fff;--surface2:#f5f5f0;
+  --border:#e8e8e2;--text:#1a1a1a;--muted:#888;
+  --accent:#009688;--accent2:#00796B;
+  --font:'Inter',sans-serif;
+  --shadow:0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.12);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:linear-gradient(135deg,#00897B,#00BFA5);padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between}
+
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:4px;color:#fff;font-size:22px}
+
+@media(max-width:768px){
+  .header{padding:0 16px}
+  .header-logo{font-size:14px}
+  .header-user{display:none}
+  .hamburger{display:block}
+  .layout{flex-direction:column;height:auto}
+  .sidebar{
+    display:none !important;width:100%;border-right:none;border-bottom:1px solid var(--border);
+    padding:12px;position:fixed;top:56px;left:0;right:0;z-index:50;
+    background:var(--surface);box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:80vh;overflow-y:auto
+  }
+  .sidebar.open{display:flex !important}
+  .main{height:calc(100vh - 56px)}
+  .main-content{padding:12px}
+  .stats-row{grid-template-columns:1fr 1fr;gap:8px}
+  .stat{padding:12px}
+  .forfragan-card{padding:14px}
+  .form-grid{grid-template-columns:1fr!important}
+  .modal{width:95vw!important;padding:16px!important;max-height:90vh;overflow-y:auto;border-radius:12px!important}
+  .modal-body{max-height:60vh;overflow-y:auto}
+  .anbud-item{padding:12px}
+  .iframe-view{height:calc(100vh - 56px)}
+  .table-wrap{overflow-x:auto}
+  table{font-size:11px}
+  /* Dashboard på mobil */
+  #view-dashboard > div[style*="grid-template-columns:repeat(4"]{
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+  }
+  #view-dashboard > div[style*="grid-template-columns:1fr 1fr"]{
+    grid-template-columns:1fr!important;
+  }
+  /* Förfrågan-kort */
+  .forfragan-card .btn{font-size:12px;padding:7px 12px}
+  /* Modal knappar */
+  .modal-footer{flex-direction:column;gap:8px}
+  .modal-footer button{width:100%}
+  /* Erbjudande form */
+  .erb-pris-row{flex-direction:column!important;gap:8px!important}
+}
+.header-logo{font-size:16px;font-weight:700;color:#fff}
+.header-nav{display:flex;gap:8px;align-items:center}
+.header-link{background:rgba(255,255,255,0.15);border:none;color:rgba(255,255,255,0.9);padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--font);text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.header-link:hover{background:rgba(255,255,255,0.25)}
+.header-user{font-size:12px;color:rgba(255,255,255,0.75)}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#00897B,#00BFA5)}
+.login-card{background:#fff;border-radius:20px;padding:40px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.login-logo{font-size:22px;font-weight:800;color:var(--accent);margin-bottom:6px}
+.login-sub{font-size:13px;color:#888;margin-bottom:24px}
+.login-label{font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px}
+.login-input{width:100%;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:10px 14px;font-size:13px;font-family:var(--font);outline:none;color:var(--text);margin-bottom:14px}
+.login-input:focus{border-color:var(--accent);background:#fff}
+.login-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font)}
+.login-btn:hover{background:var(--accent2)}
+.login-err{background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:10px 14px;font-size:12px;color:#c62828;margin-bottom:14px;display:none}
+
+/* SYSTEM LINKS */
+.sys-section{padding:12px 8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#aaa;font-weight:600}
+.sys-link{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;text-decoration:none;font-size:13px;color:#666;margin-bottom:2px;transition:all 0.15s;font-family:var(--font);background:none;border:none;cursor:pointer;width:100%;text-align:left}
+.sys-link:hover{background:#f0faf8;color:var(--accent)}
+.sys-link-icon{font-size:16px}
+
+.layout{display:flex;height:calc(100vh - 56px)}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column}
+.main{flex:1;overflow:hidden;position:relative}
+.main-content{height:100%;overflow-y:auto;padding:24px 28px}
+.iframe-view{display:none;height:100%;width:100%;border:none}
+
+.nav-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#666;border:none;background:none;width:100%;text-align:left;font-family:var(--font);margin-bottom:2px}
+.nav-item:hover{background:#f0faf8;color:var(--accent)}
+.nav-item.active{background:#e0f2f1;color:var(--accent);font-weight:500}
+.nav-badge{margin-left:auto;background:#ef5350;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.stat-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;font-weight:600}
+.stat-value{font-size:22px;font-weight:700;color:var(--accent)}
+.stat-sub{font-size:11px;color:#999;margin-top:3px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);background:#f9f9f7;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:14px;font-weight:600}
+.card-body{padding:18px}
+
+.btn{padding:7px 16px;border-radius:8px;font-size:13px;font-family:var(--font);cursor:pointer;border:1px solid #e8e8e2;background:#fff;color:#555;font-weight:500;transition:all 0.15s}
+.btn:hover{background:#f5f5f0}
+.btn-green{background:var(--accent);color:#fff;border-color:transparent}
+.btn-green:hover{background:var(--accent2)}
+.btn-blue{background:#e3f2fd;color:#1565c0;border-color:#90caf9}
+.btn-orange{background:#fff3e0;color:#e65100;border-color:#ffcc80}
+
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.badge-ny{background:#e3f2fd;color:#1565c0}
+.badge-skickad{background:#fff8e1;color:#f57f17}
+.badge-erbjuden{background:#e8f5e9;color:#2e7d32}
+.badge-accepterad{background:#e8f5e9;color:#2e7d32}
+.badge-avbokad{background:#ffebee;color:#c62828}
+.badge-inkommen{background:#f3e5f5;color:#7b1fa2}
+
+.forfragan-row{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.fr-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px}
+.fr-kund{font-size:13px;font-weight:600}
+.fr-sub{font-size:11px;color:#888;margin-top:2px}
+.fr-route{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;margin-bottom:10px}
+.fr-details{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#888;margin-bottom:12px}
+.fr-details span{color:var(--text);font-weight:500}
+.fr-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:600}
+.modal-close{background:none;border:none;color:#aaa;cursor:pointer;font-size:20px;padding:4px}
+.modal-body{padding:22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:#f9f9f7;border-radius:0 0 16px 16px}
+
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px}
+.form-input,.form-select,.form-textarea{width:100%;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--font);outline:none;color:var(--text)}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(0,150,136,0.1)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-select option{background:#fff;color:#1a1a1a}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.anbud-item{background:#f9f9f7;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.anbud-partner{font-size:13px;font-weight:600;margin-bottom:4px}
+.anbud-pris{font-size:20px;font-weight:700;color:var(--accent)}
+.anbud-meta{font-size:11px;color:#888;margin-top:4px}
+
+.erbjudande-form{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:12px;padding:16px;margin-top:16px}
+.ef-title{font-size:13px;font-weight:600;color:#2e7d32;margin-bottom:12px}
+
+.empty{text-align:center;padding:40px;color:#bbb;font-size:13px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;padding:12px 18px;font-size:13px;z-index:200;opacity:0;transform:translateY(8px);transition:all 0.25s;box-shadow:var(--shadow-md)}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ===== POLLING NOTIS ===== */
+#poll-notis {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 9999;
+  background: linear-gradient(90deg, #e65100, #ff6f00);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  padding: 12px 20px;
+  cursor: pointer;
+  animation: blink-bar 1s ease-in-out infinite alternate;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  letter-spacing: 0.02em;
+}
+@keyframes blink-bar {
+  from { opacity: 1; background: linear-gradient(90deg,#e65100,#ff6f00); }
+  to   { opacity: 0.85; background: linear-gradient(90deg,#bf360c,#e65100); }
+}
+.badge-blink {
+  animation: badge-pulse 0.8s ease-in-out infinite alternate !important;
+}
+@keyframes badge-pulse {
+  from { transform: scale(1); background: #ef5350; }
+  to   { transform: scale(1.3); background: #ff1744; box-shadow: 0 0 8px #ff1744; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">Simpel Transport</div>
+    <div class="login-sub">Admin — Offerthantering</div>
+    <div id="login-err" class="login-err"></div>
+    <label class="login-label">Email</label>
+    <input class="login-input" id="l-email" type="email" placeholder="din@email.se" onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()">
+    <input class="login-input" id="l-pass" type="password" placeholder="Lösenord" style="margin-top:10px" onkeydown="if(event.key==='Enter')loggaIn()">
+    <button class="login-btn" onclick="loggaIn()">Logga in →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="admin-app" style="display:none">
+
+<div class="header">
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    
+    <div class="header-logo">Simpel Transport — Admin</div>
+  </div>
+  <div class="header-nav">
+    <span class="header-user" id="header-user"></span>
+    <button class="header-link" onclick="loggaUt()">Logga ut</button>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sys-section">Simpel Transport — Intl. Dept</div>
+    <a onclick="visaIframe('https://simpeloffer.netlify.app/bokningar.html',this)" class="nav-item" style="text-decoration:none;display:block;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;margin-bottom:8px;border-radius:8px;text-align:left;cursor:pointer">📊 Dashboard & Bokningar</a>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('forfragan',this)">📋 Förfrågningar <span class="nav-badge" id="badge-ny">0</span></button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('skickade',this)">📤 Skickade till partners</button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('anbud',this)">💰 Inkomna anbud <span class="nav-badge" id="badge-anbud">0</span></button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('erbjudna',this)">✉️ Erbjudande till kunder</button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('accepterade',this)">✓ Accepterade</button>
+    <button class="nav-item" onclick="closeSidebarMobile();oppnaMailParse()" style="background:linear-gradient(135deg,#00897B,#00BFA5);color:#fff;margin-top:8px;border-radius:8px">🤖 AI — Klistra in mail</button>
+    <button class="nav-item" onclick="closeSidebarMobile();oppnaKundMailParse()" style="background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;margin-top:4px;border-radius:8px">📨 AI — Kundförfrågan</button>
+    <button class="nav-item" onclick="closeSidebarMobile();oppnaNyForfragan()" style="background:#1565c0;color:#fff;margin-top:4px;border-radius:8px">✏️ Ny förfrågan manuellt</button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('partners',this)">🤝 Partners</button>
+    <button class="nav-item" onclick="closeSidebarMobile();showView('kunder',this)">👥 Kunder & inlogg</button>
+
+    <div style="padding:12px 8px;margin-top:16px;border-top:1px solid var(--border)">
+    </div>
+    <button class="sys-link" onclick="visaIframe('https://simpeloffer.netlify.app/bokningar.html',this)">
+      <span class="sys-link-icon">📦</span> Bokningar
+    </button>
+    <button class="sys-link" onclick="visaIframe('https://simpeloffer.netlify.app/faktura.html',this)">
+      <span class="sys-link-icon">🧾</span> Fakturor
+    </button>
+    <button class="sys-link" onclick="visaIframe('https://simpeltransportcrm.netlify.app',this)">
+      <span class="sys-link-icon">👥</span> CRM
+    </button>
+    <button class="sys-link" onclick="visaIframe('https://simpeloffer.netlify.app/offert.html',this)">
+      <span class="sys-link-icon">📋</span> Kundportal
+    </button>
+    <button class="sys-link" onclick="visaIframe('https://simpeloffer.netlify.app/partner-offert.html',this)">
+      <span class="sys-link-icon">🤝</span> Partnerportal
+    </button>
+    <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--border)">
+      <button onclick="oppnaInstallningar()" style="background:none;border:none;font-size:12px;color:#aaa;cursor:pointer;font-family:var(--font);padding:8px 12px;width:100%;text-align:left;border-radius:6px;display:flex;align-items:center;gap:6px" onmouseover="this.style.color='#555';this.style.background='#f5f5f0'" onmouseout="this.style.color='#aaa';this.style.background='none'">⚙️ Inställningar</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <iframe class="iframe-view" id="sys-iframe"></iframe>
+    <div class="main-content" id="main-content">
+    <div class="stats-row" id="old-kpi-row">
+      <div class="stat"><div class="stat-label">Nya förfrågningar</div><div class="stat-value" id="s-ny">–</div><div class="stat-sub">Inväntar hantering</div></div>
+      <div class="stat"><div class="stat-label">Inkomna anbud</div><div class="stat-value" id="s-anbud">–</div><div class="stat-sub">Från partners</div></div>
+      <div class="stat"><div class="stat-label">Skickade erbjudanden</div><div class="stat-value" id="s-erb">–</div><div class="stat-sub">Till kunder</div></div>
+      <div class="stat"><div class="stat-label">Accepterade</div><div class="stat-value" id="s-acc">–</div><div class="stat-sub">Klara affärer</div></div>
+    </div>
+
+    <div id="view-dashboard"></div>
+    <div id="view-forfragan" style="display:none"></div>
+    <div id="view-skickade" style="display:none"></div>
+    <div id="view-anbud" style="display:none"></div>
+    <div id="view-erbjudna" style="display:none"></div>
+    <div id="view-accepterade" style="display:none"></div>
+    <div id="view-partners" style="display:none"></div>
+    <div id="view-kunder" style="display:none"></div>
+    </div>
+  </main>
+</div>
+
+<!-- SKICKA TILL PARTNER MODAL -->
+<div class="overlay" id="partner-overlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">📤 Skicka till partners</div>
+      <button class="modal-close" onclick="stangModal('partner-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="partner-forfragan-info" style="background:#f5f5f0;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Välj partners att skicka till</label>
+        <input type="text" id="partner-sok" placeholder="Sök partner..." oninput="filterPartnerVal(this.value)" style="width:100%;padding:8px 12px;border:1px solid #e8e8e2;border-radius:8px;font-size:13px;margin-bottom:8px;font-family:var(--font,Inter,sans-serif);outline:none">
+        <div id="partner-val" style="max-height:200px;overflow-y:auto"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Meddelande till partners</label>
+        <textarea class="form-textarea" id="partner-meddelande" rows="6"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Svarstid (datum)</label>
+        <input class="form-input" type="date" id="partner-deadline">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="stangModal('partner-overlay')">Avbryt</button>
+      <button class="btn btn-green" onclick="skickaTillPartners()">📤 Skicka förfrågan</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKICKA ERBJUDANDE MODAL -->
+<div class="overlay" id="erbjudande-overlay">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">✉️ Skicka erbjudande till kund</div>
+      <button class="modal-close" onclick="stangModal('erbjudande-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="erb-forfragan-info" style="background:#f5f5f0;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px"></div>
+
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:#777;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.07em">Inkomna anbud</div>
+        <div id="erb-anbud-list"></div>
+      </div>
+
+      <div class="erbjudande-form">
+        <div class="ef-title">💰 Ditt erbjudande till kunden</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Inköpspris</label>
+            <div style="display:flex;gap:6px">
+              <input class="form-input" type="number" id="erb-inkop" placeholder="0" oninput="beraknaMarginal()" style="flex:1">
+              <select id="erb-inkop-valuta" class="form-input" style="width:80px" onchange="beraknaMarginal()">
+                <option>SEK</option><option>EUR</option><option>USD</option><option>GBP</option><option>CNY</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Försäljningspris</label>
+            <div style="display:flex;gap:6px">
+              <input class="form-input" type="number" id="erb-forsalj" placeholder="0" oninput="beraknaMarginal()" style="flex:1">
+              <select id="erb-forsalj-valuta" class="form-input" style="width:80px" onchange="beraknaMarginal()">
+                <option>SEK</option><option>EUR</option><option>USD</option><option>GBP</option><option>CNY</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="erb-kurs-info" style="font-size:11px;color:#888;margin-bottom:10px;display:none">
+          💱 Live-kurs: <span id="erb-kurs-text"></span>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <div style="flex:1;background:#fff;border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em">Marginal</div>
+            <div style="font-size:18px;font-weight:700;color:var(--accent)" id="erb-marginal">–</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)">
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em">Vinst (SEK)</div>
+            <div style="font-size:18px;font-weight:700;color:var(--accent)" id="erb-vinst">–</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Transportslag</label>
+            <select class="form-input" id="erb-typ">
+              <option value="">– Samma som förfrågan –</option>
+              <option>Sjö</option><option>Flyg</option><option>Road</option><option>Courier</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Leveranstid</label>
+            <input class="form-input" id="erb-leveranstid" placeholder="t.ex. 3-4 veckor">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giltigt till</label>
+            <input class="form-input" type="date" id="erb-giltig">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Meddelande till kund</label>
+          <textarea class="form-textarea" id="erb-meddelande" placeholder="Tack för din förfrågan..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="stangModal('erbjudande-overlay')">Avbryt</button>
+      <button class="btn" style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9" onclick="accepteraAtKund()">✓ Acceptera åt kund</button>
+      <button class="btn btn-green" onclick="skickaErbjudande()">✉️ Skicka erbjudande till kund</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kundmail modal -->
+<div class="overlay" id="kundmail-overlay">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-hdr">
+      <div class="modal-title">📨 Klistra in kundmail</div>
+      <button class="modal-close" onclick="stangModal('kundmail-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">Klistra in mailet från kunden</label>
+      <textarea id="kundmail-text" placeholder="Klistra in hela mailet här..." style="width:100%;height:140px;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);resize:vertical;line-height:1.5;margin-bottom:10px"></textarea>
+      
+      <div style="margin-bottom:10px">
+        <label class="form-label">Bifogade filer (PDF, bild, Excel) <span style="color:var(--muted);font-weight:400">— valfritt</span></label>
+        <div id="kundmail-drop-zone" onclick="document.getElementById('kundmail-fil-input').click()" 
+          style="border:2px dashed var(--border);border-radius:8px;padding:14px;text-align:center;cursor:pointer;font-size:13px;color:var(--muted);transition:all 0.2s"
+          ondragover="event.preventDefault();this.style.borderColor='#009688';this.style.background='#f0faf9'"
+          ondragleave="this.style.borderColor='';this.style.background=''"
+          ondrop="kundmailDropFil(event)">
+          📎 Klicka eller dra och släpp filer hit
+          <div id="kundmail-fil-namn" style="margin-top:6px;font-size:12px;color:#009688;font-weight:600"></div>
+        </div>
+        <input type="file" id="kundmail-fil-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.xlsx,.xls" style="display:none" multiple onchange="kundmailFilVald(this)">
+      </div>
+      
+      <button class="btn btn-green" style="width:100%" onclick="parseraKundMail(event)">🤖 Analysera med AI</button>
+
+      <div id="kundmail-result" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+        <div class="form-grid" style="gap:12px">
+          <div class="form-group">
+            <label class="form-label">Kund</label>
+            <input id="km-kund" class="form-input" type="text">
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-post</label>
+            <input id="km-email" class="form-input" type="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Från</label>
+            <input id="km-fran" class="form-input" type="text">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Till</label>
+            <input id="km-till" class="form-input" type="text">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Transporttyp</label>
+            <select id="km-typ" class="form-input">
+              <option>Sjö</option><option>Flyg</option><option>Road</option><option>Courier</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Önskat datum</label>
+            <input id="km-datum" class="form-input" type="date">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Gods / Meddelande</label>
+            <textarea id="km-meddelande" class="form-input" rows="3" style="resize:vertical"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label class="form-label">📎 Bifoga dokument (valfritt)</label>
+          <label style="display:flex;align-items:center;gap:8px;background:#f5f5f0;border:1px dashed #ccc;border-radius:8px;padding:10px 14px;cursor:pointer;font-size:12px;color:#666;font-family:var(--font);margin-top:6px">
+            + Välj filer (PDF, bilder, Excel...)
+            <input type="file" id="km-filer" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" style="display:none">
+          </label>
+          <div id="km-filer-lista" style="margin-top:6px;font-size:12px;color:#666"></div>
+        </div>
+        <button id="km-spara-btn" class="btn btn-green" style="width:100%;margin-top:12px" onclick="sparaKundForfragan()">✓ Skapa förfrågan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ny förfrågan modal -->
+<div class="overlay" id="ny-forfragan-overlay">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-hdr">
+      <div class="modal-title">✏️ Ny förfrågan</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="display:inline-flex;align-items:center;gap:6px;background:#f0faf8;border:1px solid #b2dfdb;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:12px;color:#009688;font-weight:500;font-family:var(--font)">
+          📄 Läs in från dokument
+          <input type="file" accept=".pdf" style="display:none" onchange="laddaFranPDFForfragan(this.files[0])">
+        </label>
+        <button class="modal-close" onclick="stangModal('ny-forfragan-overlay')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Kund *</label>
+          <div style="display:flex;gap:8px">
+            <select id="nf-kund-select" class="form-input" onchange="valdKund(this.value)" style="flex:1">
+              <option value="">— Välj befintlig kund —</option>
+              <option value="__ny__">+ Skapa ny kund</option>
+            </select>
+          </div>
+        </div>
+        <div id="nf-ny-kund-fields" style="display:none;grid-column:1/-1">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Företagsnamn *</label>
+              <input type="text" id="nf-kund" class="form-input" placeholder="Företagsnamn">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" id="nf-email" class="form-input" placeholder="kund@foretag.se">
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Transporttyp *</label>
+          <select id="nf-typ" class="form-input">
+            <option value="">— Välj —</option>
+            <option>Sjö</option><option>Flyg</option><option>Road</option><option>Järnväg</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gods</label>
+          <input type="text" id="nf-gods" class="form-input" placeholder="t.ex. Medical devices">
+        </div>
+        <div class="form-group" style="position:relative">
+          <label class="form-label">Från *</label>
+          <input type="text" id="nf-fran" class="form-input" placeholder="t.ex. Fort Worth, TX" autocomplete="off" oninput="acSokAdmin(this,'ac-nf-fran')">
+          <div id="ac-nf-fran" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e8e8e2;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;max-height:220px;overflow-y:auto"></div>
+        </div>
+        <div class="form-group" style="position:relative">
+          <label class="form-label">Till *</label>
+          <input type="text" id="nf-till" class="form-input" placeholder="t.ex. Hisings Kärra" autocomplete="off" oninput="acSokAdmin(this,'ac-nf-till')">
+          <div id="ac-nf-till" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e8e8e2;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:100;max-height:220px;overflow-y:auto"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Vikt (kg)</label>
+          <input type="number" id="nf-vikt" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Volym (cbm)</label>
+          <input type="text" id="nf-volym" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CRD / Önskat datum</label>
+          <input type="date" id="nf-datum" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Incoterms</label>
+          <select id="nf-incoterms" class="form-input">
+            <option value="">— Välj —</option>
+            <option>EXW</option><option>FCA</option><option>FOB</option><option>CIF</option><option>DAP</option><option>DDP</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:8px">
+        <label class="form-label">Meddelande / Notering</label>
+        <textarea id="nf-meddelande" class="form-input" style="height:80px;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="stangModal('ny-forfragan-overlay')">Avbryt</button>
+      <button class="btn btn-green" onclick="sparaNyForfragan()">✓ Skapa förfrågan</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Mail Parse Modal -->
+<div class="overlay" id="mail-parse-overlay">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr">
+      <div class="modal-title">🤖 Klistra in leverantörsmail</div>
+      <button class="modal-close" onclick="stangModal('mail-parse-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Välj förfrågan att koppla anbudet till</label>
+        <select id="mail-forfragan-select" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font)">
+          <option value="">— Välj förfrågan —</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Klistra in mailet från leverantören</label>
+        <textarea id="mail-text" placeholder="Klistra in hela mailet här..." style="width:100%;height:200px;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);resize:vertical;line-height:1.5"></textarea>
+      </div>
+      <button onclick="parsaMail()" style="width:100%;padding:12px;background:linear-gradient(135deg,#00897B,#00BFA5);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px">
+        🤖 Analysera med AI
+      </button>
+      <div id="mail-parse-result" style="display:none;margin-top:16px;padding:16px;background:#f5f5f0;border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:#00897B">✓ AI har analyserat mailet — kontrollera och justera:</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Partner/Leverantör</label>
+            <select id="mp-partner-select" class="form-input" style="margin-bottom:6px" onchange="
+              const v=this.value;
+              const inp=document.getElementById('mp-partner');
+              const emailInp=document.getElementById('mp-email');
+              if(v==='__manuell__'){ inp.style.display='block'; inp.value=''; }
+              else if(v){
+                inp.style.display='none';
+                inp.value=v.split('||')[0];
+                emailInp.value=v.split('||')[1]||'';
+              }
+            ">
+              <option value="">— Välj befintlig partner —</option>
+              <option value="__manuell__">✏️ Skriv in manuellt</option>
+            </select>
+            <input type="text" id="mp-partner" class="form-input" placeholder="Partnernamn" style="display:none">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="mp-email" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pris (SEK)</label>
+            <input type="number" id="mp-pris" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valuta</label>
+            <select id="mp-valuta" class="form-input">
+              <option>SEK</option><option>USD</option><option>EUR</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Leveranstid</label>
+            <input type="text" id="mp-leveranstid" class="form-input" placeholder="t.ex. 5-7 dagar">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Giltig till</label>
+            <input type="date" id="mp-giltig" class="form-input">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:8px">
+          <label class="form-label">Meddelande / Notering</label>
+          <textarea id="mp-meddelande" class="form-input" style="height:80px;resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="stangModal('mail-parse-overlay')">Avbryt</button>
+      <button class="btn btn-green" id="mp-spara-btn" onclick="sparaAnbudFranMail()" style="display:none">💾 Spara anbud</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /admin-app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+const SB_URL = 'https://tahwecikznaomcppqadf.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhaHdlY2lrem5hb21jcHBxYWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjQ3NTMsImV4cCI6MjA5MzYwMDc1M30.mOjvfAAMJt5rvv-QvQG6LfEAsK7WaxMdINSM89xhq9E';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+const ADMIN_EMAIL = 'andreas.karlsson@simpeltransport.se';
+const TEST_EMAILS = ['hampus.sjostrom@simpeltransport.se'];
+const ADMIN_EMAILS = ['andreas.karlsson@simpeltransport.se', 'admin2@simpeltransport.se'];
+
+// Aktuell roll och behörigheter
+let currentRoll = null;
+let currentPermissions = {};
+
+function harBehörighet(perm){ return currentRoll === 'admin' || currentPermissions[perm] === true; }
+function erAdmin(){ return currentRoll === 'admin'; }
+function erTestUser(){ return currentRoll === 'test' || TEST_EMAILS.includes(currentUser?.email); }
+function erSäljare(){ return currentRoll === 'säljare'; }
+function erEkonomi(){ return currentRoll === 'ekonomi'; }
+
+async function laddaRoll(userId){
+  const resp = await fetch(SB_URL+'/rest/v1/user_roles?user_id=eq.'+userId+'&select=role,permissions&limit=1', {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  const data = await resp.json();
+  if(data?.[0]){
+    currentRoll = data[0].role;
+    currentPermissions = data[0].permissions || {};
+  }
+  // Defaulta till test om e-post finns i TEST_EMAILS
+  if(ADMIN_EMAILS.includes(currentUser?.email)){ currentRoll='admin'; visaRollBanner(); tillämpRollUI(); return; }
+  if(TEST_EMAILS.includes(currentUser?.email) && currentRoll !== 'test'){
+    currentRoll = 'test';
+  }
+}
+
+function visaRollBanner(){
+  const befintlig = document.getElementById('test-banner');
+  if(befintlig) befintlig.remove();
+
+  let bg, text;
+  if(erTestUser()){
+    bg = '#f59e0b'; text = '🧪 TESTLÄGE — Du är inloggad som testanvändare. Ingen data sparas.';
+  } else if(erSäljare()){
+    bg = '#1565c0'; text = '💼 SÄLJARE — Du ser inte ekonomidata och kan inte fakturera.';
+  } else if(erEkonomi()){
+    bg = '#2e7d32'; text = '💰 EKONOMI — Du har tillgång till ekonomidata och fakturering.';
+  } else { return; }
+
+  const banner = document.createElement('div');
+  banner.id = 'test-banner';
+  banner.style.cssText = `position:fixed;top:0;left:0;right:0;z-index:9999;background:${bg};color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600;font-family:var(--font)`;
+  banner.innerHTML = text;
+  document.body.prepend(banner);
+  document.body.style.paddingTop = '36px';
+}
+
+function blockaSparning(e){
+  if(!erTestUser()) return false;
+  if(e){ e.preventDefault?.(); e.stopPropagation?.(); }
+  toast('🧪 Testläge — data sparas inte');
+  return true;
+}
+
+// Dölj ekonomidata för säljare/test
+function tillämpRollUI(){
+  if(erAdmin()) return;
+  
+  const dolj = erTestUser() || erSäljare();
+  
+  if(dolj){
+    // Dölj inköpspris i erbjudande-formuläret
+    const inkopGrp = document.getElementById('erb-inkop')?.closest('.form-group');
+    if(inkopGrp) inkopGrp.style.display='none';
+    
+    // Dölj marginal/vinst i erbjudande
+    const marginalDivs = document.querySelectorAll('#erb-marginal, #erb-vinst');
+    marginalDivs.forEach(el=>{ if(el.parentElement) el.parentElement.style.display='none'; });
+    
+    // Dölj Kunder & inlogg och backup i nav
+    document.querySelectorAll('.nav-item').forEach(btn=>{
+      if(btn.textContent.includes('Kunder & inlogg') || 
+         btn.textContent.includes('backup') ||
+         btn.textContent.includes('testdata')){
+        btn.style.display='none';
+      }
+    });
+  }
+  
+  // Ekonomi-rollen döljer förfrågan-hantering
+  if(erEkonomi()){
+    document.querySelectorAll('.nav-item').forEach(btn=>{
+      if(btn.textContent.includes('Förfrågningar') || 
+         btn.textContent.includes('Skickade') ||
+         btn.textContent.includes('Anbud') ||
+         btn.textContent.includes('Erbjudande')){
+        btn.style.display='none';
+      }
+    });
+  }
+}
+
+async function getAdminToken(){
+  const session = await sb.auth.getSession();
+  return session?.data?.session?.access_token || null;
+}
+
+async function getAdminHeaders(){
+  const token = await getAdminToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + token
+  };
+}
+const WORKER = 'https://claudeproxy.andreas-karlsson.workers.dev';
+
+let allForfragan = [];
+let allPartners = [];
+let currentForfragan = null;
+let currentView = 'dashboard';
+
+// ===== AUTH =====
+function closeSidebarMobile(){
+  const s = document.querySelector('.sidebar');
+  if(s){ s.classList.remove('open'); }
+}
+
+function toggleSidebar(){
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('open');
+  if(sidebar.classList.contains('open')){
+    setTimeout(()=>{
+      document.addEventListener('click', function closeSidebar(e){
+        if(!sidebar.contains(e.target) && !e.target.classList.contains('hamburger')){
+          sidebar.classList.remove('open');
+          document.removeEventListener('click', closeSidebar);
+        }
+      });
+    }, 100);
+  }
+}
+
+// Close sidebar when nav item clicked on mobile
+document.querySelectorAll('.nav-item,.sys-link').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(window.innerWidth<=768) document.querySelector('.sidebar').classList.remove('open');
+  });
+});
+
+async function loggaIn(){
+  const email    = document.getElementById('l-email').value.trim();
+  const password = document.getElementById('l-pass').value;
+  const err      = document.getElementById('login-err');
+  err.style.display = 'none';
+
+  const {data, error} = await sb.auth.signInWithPassword({email, password});
+  if(error){ err.textContent = 'Fel email eller lösenord'; err.style.display='block'; return; }
+
+  // Kontrollera roll — admin, säljare, ekonomi och test har tillgång
+  const roleResp = await fetch(SB_URL+'/rest/v1/user_roles?user_id=eq.'+data.user.id+'&select=role,permissions&limit=1', {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+data.session.access_token}
+  });
+  const roles = await roleResp.json();
+  const tillåtnaRollar = ['admin','säljare','ekonomi','test'];
+  const roll = roles?.[0]?.role;
+
+  // Admin-emailadresser har alltid full tillgång
+  if(ADMIN_EMAILS.includes(data.user.email)){
+    visaAdmin(data.user); return;
+  }
+  
+  // Tillåt även testanvändare baserat på email
+  if(!roll && !TEST_EMAILS.includes(data.user.email)){
+    err.textContent = 'Åtkomst nekad — kontakta admin'; err.style.display='block'; await sb.auth.signOut(); return;
+  }
+  if(roll && !tillåtnaRollar.includes(roll) && !TEST_EMAILS.includes(data.user.email)){
+    err.textContent = 'Åtkomst nekad — fel behörighet'; err.style.display='block'; await sb.auth.signOut(); return;
+  }
+
+  visaAdmin(data.user);
+}
+
+async function loggaUt(){
+  await sb.auth.signOut();
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-app').style.display = 'none';
+}
+
+function visaAdmin(user){
+  currentUser = user;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-app').style.display = 'block';
+  const namn = user?.user_metadata?.full_name || user?.email || 'Admin';
+  document.getElementById('header-user').textContent = namn;
+  laddaRoll(user.id).then(()=>{
+    visaRollBanner();
+    tillämpRollUI();
+    init();
+  });
+}
+
+// Check if already logged in
+(async()=>{
+  const {data} = await sb.auth.getSession();
+  if(data?.session){
+    const roleResp = await fetch(SB_URL+'/rest/v1/user_roles?user_id=eq.'+data.session.user.id+'&role=eq.admin&select=role', {
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+data.session.access_token}
+    });
+    const roles = await roleResp.json();
+    if(roles.length) visaAdmin(data.session.user);
+  }
+})();
+
+// ===== INIT =====
+async function init(){
+  await laddaAll();
+}
+
+async function laddaAll(){
+  const resp = await fetch(SB_URL+'/rest/v1/forfragan?select=*,anbud(*),erbjudande(*),forfragan_partners(*)&order=created_at.desc', {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  const data = await resp.json();
+  allForfragan = Array.isArray(data) ? data : [];
+
+  // Stats
+  const ny   = allForfragan.filter(f=>f.status==='ny').length;
+  const anbud= allForfragan.filter(f=>!['accepterad','bokad','fakturerad','avbokad'].includes(f.status)).reduce((s,f)=>s+(f.anbud?.filter(a=>a.status==='inkommen').length||0),0);
+  const erb  = allForfragan.filter(f=>f.status==='erbjuden').length;
+  const acc  = allForfragan.filter(f=>f.status==='accepterad').length;
+
+  document.getElementById('s-ny').textContent = ny;
+  document.getElementById('s-anbud').textContent = anbud;
+  document.getElementById('s-erb').textContent = erb;
+  document.getElementById('s-acc').textContent = acc;
+  document.getElementById('badge-ny').textContent = ny;
+  document.getElementById('badge-anbud').textContent = anbud;
+
+  renderAdminDashboard();
+  renderView('forfragan'); // Ladda förfrågningar i bakgrunden
+}
+
+// ===== POLLING =====
+let pollPrevNy = -1;
+let pollPrevAnbud = -1;
+
+async function pollCheck(){
+  try {
+    const resp = await fetch(SB_URL+'/rest/v1/forfragan?select=id,status,anbud(id,status)&order=created_at.desc', {
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    const data = await resp.json();
+    if(!Array.isArray(data)) return;
+
+    const ny    = data.filter(f=>f.status==='ny').length;
+    const anbud = data.filter(f=>!['accepterad','bokad','fakturerad','avbokad'].includes(f.status))
+                      .reduce((s,f)=>s+(f.anbud?.filter(a=>a.status==='inkommen').length||0),0);
+
+    // Första körningen — sätt baseline
+    if(pollPrevNy === -1){ pollPrevNy = ny; pollPrevAnbud = anbud; return; }
+
+    const nyForfragan = ny > pollPrevNy;
+    const nyttAnbud   = anbud > pollPrevAnbud;
+
+    if(nyForfragan || nyttAnbud){
+      const msg = [];
+      if(nyForfragan) msg.push(`${ny - pollPrevNy} ny förfrågan`);
+      if(nyttAnbud)   msg.push(`${anbud - pollPrevAnbud} nytt anbud`);
+      visaNotis('🔔 ' + msg.join(' & ') + ' — klicka för att ladda om!');
+
+      // Blinka badges
+      if(nyForfragan) document.getElementById('badge-ny')?.classList.add('badge-blink');
+      if(nyttAnbud)   document.getElementById('badge-anbud')?.classList.add('badge-blink');
+
+      pollPrevNy    = ny;
+      pollPrevAnbud = anbud;
+    }
+  } catch(e){}
+}
+
+function visaNotis(msg){
+  const el = document.getElementById('poll-notis');
+  el.textContent = msg;
+  el.style.display = 'block';
+  // Skjut ner app-contentet så det inte täcks
+  document.getElementById('app').style.marginTop = '44px';
+}
+
+function stangNotis(){
+  document.getElementById('poll-notis').style.display = 'none';
+  document.getElementById('app').style.marginTop = '';
+  document.getElementById('badge-ny')?.classList.remove('badge-blink');
+  document.getElementById('badge-anbud')?.classList.remove('badge-blink');
+  // Ladda om all data
+  laddaAll();
+}
+
+// Starta polling var 60:e sekund
+setInterval(pollCheck, 60000);
+
+// ===== VIEWS =====
+function visaIframe(url, btn){
+  document.querySelectorAll('.nav-item,.sys-link').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sys-iframe').src = url;
+  document.getElementById('sys-iframe').style.display = 'block';
+  document.getElementById('main-content').style.display = 'none';
+}
+
+function showView(view, btn){
+  document.getElementById('sys-iframe').style.display = 'none';
+  document.getElementById('sys-iframe').src = '';
+  document.getElementById('main-content').style.display = 'block';
+  document.querySelectorAll('.nav-item,.sys-link').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  ['dashboard','forfragan','skickade','anbud','erbjudna','accepterade','partners','kunder'].forEach(v=>{
+    document.getElementById('view-'+v).style.display = v===view?'block':'none';
+  });
+  // Dölj gamla KPI-raden på dashboard
+  const oldKpi = document.getElementById('old-kpi-row');
+  if(oldKpi) oldKpi.style.display = view==='dashboard' ? 'none' : 'grid';
+  currentView = view;
+  if(view==='dashboard') renderAdminDashboard();
+  else if(view==='partners') renderPartners();
+  else if(view==='kunder') laddaKunder();
+  else renderView(view);
+}
+
+async function renderAdminDashboard(){
+  const oldKpi = document.getElementById('old-kpi-row');
+  if(oldKpi) oldKpi.style.display = 'none';
+  const el = document.getElementById('view-dashboard');
+  el.innerHTML = '<div style="color:#888;padding:20px">Laddar dashboard...</div>';
+
+  // Hämta boknings-data
+  let bokData = [];
+  try {
+    const resp = await fetch(SB_URL+'/rest/v1/bokningar?aktiv=eq.true&select=forsaljning,vinst,inkop,status,fakturerad,typ,kund,etd,eta,ref,partner',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    bokData = await resp.json();
+    if(!Array.isArray(bokData)) bokData = [];
+  } catch(e){}
+
+  const oms = bokData.reduce((s,b)=>s+(parseFloat(b.forsaljning)||0),0);
+  const vinst = bokData.reduce((s,b)=>s+(parseFloat(b.vinst)||0),0);
+  const inkop = bokData.reduce((s,b)=>s+(parseFloat(b.inkop)||0),0);
+  const marginal = oms>0?((vinst/oms)*100).toFixed(1):0;
+  const ejFakt = bokData.filter(b=>b.status==='Levererad'&&b.fakturerad!=='X').length;
+  const pagaende = bokData.filter(b=>['Pågående','Bokad'].includes(b.status)).length;
+  const levererade = bokData.filter(b=>b.status==='Levererad').length;
+  const fakturerade = bokData.filter(b=>b.status==='Fakturerad').length;
+  const sjo = bokData.filter(b=>b.typ==='Sjö').length;
+  const flyg = bokData.filter(b=>b.typ==='Flyg').length;
+  const road = bokData.filter(b=>b.typ==='Road').length;
+
+  // Offert-stats
+  const aktiva = allForfragan.filter(f=>!['bokad','fakturerad','avbokad'].includes(f.status));
+  const nyaForf = aktiva.filter(f=>f.status==='ny').length;
+  const anbudCount = aktiva.filter(f=>f.anbud?.some(a=>a.status==='inkommen')).length;
+  const erbjudna = allForfragan.filter(f=>f.status==='erbjuden').length;
+  const accepterade = allForfragan.filter(f=>f.status==='accepterad').length;
+
+  // Senaste bokningar
+  const senaste = [...bokData].sort((a,b)=>(b.etd||'').localeCompare(a.etd||'')).slice(0,5);
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Omsättning</div>
+        <div style="font-size:22px;font-weight:700;color:#009688">${Math.round(oms).toLocaleString('sv-SE')} kr</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Inkl. alla bokningar</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Vinst</div>
+        <div style="font-size:22px;font-weight:700;color:#2e7d32">+${Math.round(vinst).toLocaleString('sv-SE')} kr</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">${marginal}% marginal</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Inköp</div>
+        <div style="font-size:22px;font-weight:700">${Math.round(inkop).toLocaleString('sv-SE')} kr</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Totalt partnerkostnad</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Ej fakturerade</div>
+        <div style="font-size:22px;font-weight:700;color:${ejFakt>0?'#e65100':'#2e7d32'}">${ejFakt}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Levererade utan faktura</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Pågående</div>
+        <div style="font-size:22px;font-weight:700;color:#1565c0">${pagaende}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Bokade & pågående</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Levererade</div>
+        <div style="font-size:22px;font-weight:700;color:#f59e0b">${levererade}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Inväntar faktura/POD</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Fakturerade</div>
+        <div style="font-size:22px;font-weight:700;color:#2e7d32">${fakturerade}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Avslutade affärer</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px">
+        <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Fördelning</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px">🚢 ${sjo} &nbsp; ✈️ ${flyg} &nbsp; 🚛 ${road}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:3px">Sjö · Flyg · Road</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid #f5f5f0;font-size:13px;font-weight:600">📋 Offerthantering</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          <div onclick="showView('forfragan',document.querySelector('[onclick*=forfragan]'))" style="padding:14px 16px;cursor:pointer;border-right:1px solid #f5f5f0;border-bottom:1px solid #f5f5f0" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+            <div style="font-size:24px;font-weight:700;color:#009688">${nyaForf}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">Nya förfrågningar</div>
+          </div>
+          <div onclick="showView('anbud',document.querySelector('[onclick*=anbud]'))" style="padding:14px 16px;cursor:pointer;border-bottom:1px solid #f5f5f0" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+            <div style="font-size:24px;font-weight:700;color:#f59e0b">${anbudCount}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">Inkomna anbud</div>
+          </div>
+          <div onclick="showView('erbjudna',document.querySelector('[onclick*=erbjudna]'))" style="padding:14px 16px;cursor:pointer;border-right:1px solid #f5f5f0" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+            <div style="font-size:24px;font-weight:700;color:#8b5cf6">${erbjudna}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">Skickade erbjudanden</div>
+          </div>
+          <div onclick="showView('accepterade',document.querySelector('[onclick*=accepterade]'))" style="padding:14px 16px;cursor:pointer" onmouseover="this.style.background='#f9f9f7'" onmouseout="this.style.background=''">
+            <div style="font-size:24px;font-weight:700;color:#2e7d32">${accepterade}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">Accepterade</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid #f5f5f0;font-size:13px;font-weight:600">🕐 Senaste bokningar</div>
+        ${senaste.map(b=>`
+          <div style="padding:10px 16px;border-bottom:1px solid #f9f9f7;display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:12px;font-weight:500">${b.kund||'–'}</div>
+              <div style="font-size:11px;color:#888">${b.ref||'–'} · ${b.typ||''}</div>
+            </div>
+            <span style="font-size:11px;background:#f5f5f0;padding:2px 8px;border-radius:20px;color:#555">${b.status||'–'}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+
+
+function renderView(view){
+  const filters = {
+    forfragan:    f=>!['accepterad','bokad','fakturerad','avbokad'].includes(f.status),
+    skickade:     f=>f.status==='skickad',
+    anbud:        f=>(f.anbud?.some(a=>a.status==='inkommen')) && !['accepterad','avbokad'].includes(f.status),
+    erbjudna:     f=>f.status==='erbjuden',
+    accepterade:  f=>f.status==='accepterad',
+  };
+  const data = allForfragan.filter(filters[view]||(() =>true));
+  const el = document.getElementById('view-'+view);
+
+  if(!data.length){
+    el.innerHTML = '<div class="empty">Inga förfrågningar i denna kategori</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(f=>forfraganHTML(f, view)).join('');
+}
+
+function forfraganHTML(f, view){
+  const badge = {ny:'badge-ny',skickad:'badge-skickad',erbjuden:'badge-erbjuden',accepterad:'badge-accepterad'}[f.status]||'badge-ny';
+  const datum = f.datum ? new Date(f.datum).toLocaleDateString('sv-SE') : '–';
+  const anbudCount = f.anbud?.length||0;
+
+  let actions = '';
+  if(view==='forfragan'){
+    actions = `<button class="btn btn-blue" onclick="oppnaPartnerModal('${f.id}')">📤 Skicka till partners</button>`;
+  } else if(view==='skickade'){
+    const fp = f.forfragan_partners||[];
+    actions = fp.length
+      ? `<div style="font-size:12px;color:#888;margin-top:6px">Skickad till: ${fp.map(p=>`
+          <span style="display:inline-flex;align-items:center;gap:4px;background:#f5f5f0;border-radius:6px;padding:2px 8px;margin:2px">
+            <b style="color:var(--text)">${p.partner_namn}</b>
+            <button onclick="event.stopPropagation();taBortForfraganPartner('${p.id}','${f.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;padding:0 2px;line-height:1" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#ccc'">×</button>
+          </span>`).join('')}
+        </div>`
+      : `<span style="font-size:12px;color:#888">Skickad till partners · Inväntar svar</span>`;
+  } else if(view==='anbud'){
+    actions = `<button class="btn btn-green" onclick="oppnaErbjudandeModal('${f.id}')">✉️ Skicka erbjudande till kund</button>`;
+  } else if(view==='erbjudna'){
+    actions = `
+      <span style="font-size:12px;color:#2e7d32">✓ Erbjudande skickat · Inväntar kundsvar</span>
+      <button class="btn" onclick="oppnaErbjudandeModal('${f.id}')" style="margin-left:8px">✏️ Se/Ändra</button>
+    `;
+  } else if(view==='accepterade'){
+    const erb = f.erbjudande?.[0];
+    const bokParams = new URLSearchParams({
+      ny_bokning: '1',
+      kund: f.kund_namn||f.kund_email||'',
+      typ:  f.transport_typ||'Sjö',
+      etd:  f.datum||'',
+      inkop: Math.round(erb?.pris_inkop||0),
+      forsaljning: Math.round(erb?.pris_forsaljning||0),
+      partner: f.anbud?.[0]?.partner_namn||'',
+      ref:  f.id.substring(0,8),
+      kommentar: `Offert: ${f.från_ort||''} → ${f.till_ort||''}`,
+    });
+    actions = `
+      <button class="btn btn-green" onclick="visaIframe('https://simpeloffer.netlify.app/bokningar.html?${bokParams.toString()}',document.querySelector('.sys-link'))">📦 Skapa bokning</button>
+      <button class="btn" onclick="faktureraOffert('${f.id}')">🧾 Fakturera</button>
+    `;
+  }
+
+  return `<div class="forfragan-row">
+    <div class="fr-top">
+      <div>
+        <div class="fr-kund">${f.kund_namn||f.kund_email||'–'}</div>
+        <div class="fr-sub">${f.kund_email||''} · ${new Date(f.created_at).toLocaleDateString('sv-SE')}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select onchange="andraForfraganStatus('${f.id}',this)" style="font-size:11px;padding:3px 9px;border-radius:20px;border:none;cursor:pointer;font-family:var(--font);font-weight:500;outline:none;background:${
+          f.status==='ny'?'#e3f2fd':f.status==='skickad'?'#fff8e1':f.status==='erbjuden'?'#e8f5e9':f.status==='accepterad'?'#e8f5e9':'#ffebee'
+        };color:${
+          f.status==='ny'?'#1565c0':f.status==='skickad'?'#f57f17':f.status==='erbjuden'?'#2e7d32':f.status==='accepterad'?'#2e7d32':'#c62828'
+        }">
+          <option value="ny"${f.status==='ny'?' selected':''}>ny</option>
+          <option value="skickad"${f.status==='skickad'?' selected':''}>skickad</option>
+          <option value="erbjuden"${f.status==='erbjuden'?' selected':''}>erbjuden</option>
+          <option value="accepterad"${f.status==='accepterad'?' selected':''}>accepterad</option>
+          <option value="avbokad"${f.status==='avbokad'?' selected':''}>avbokad</option>
+        </select>
+        ${anbudCount>0?`<span style="font-size:11px;background:#f3e5f5;color:#7b1fa2;padding:3px 9px;border-radius:20px;font-weight:500">${anbudCount} anbud</span>`:''}
+        <button onclick="taBortForfragan('${f.id}','${(f.kund_namn||f.kund_email||'').replace(/'/g,"\\'")}','${f.från_ort||''} → ${f.till_ort||''}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:16px;padding:2px 6px;border-radius:4px;line-height:1" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#ccc'" title="Ta bort förfrågan">×</button>
+      </div>
+    </div>
+    <div class="fr-route">
+      <span>${f.från_ort||'–'}</span>
+      <span style="color:#ccc;font-size:18px">→</span>
+      <span>${f.till_ort||'–'}</span>
+      <span style="font-size:12px;background:#e0f2f1;color:var(--accent);padding:2px 9px;border-radius:20px;font-weight:500;margin-left:8px">${f.transport_typ||''}</span>
+    </div>
+    <div class="fr-details">
+      <div>Datum: <span>${datum}</span></div>
+      ${f.gods_typ?`<div>Gods: <span>${f.gods_typ}</span></div>`:''}
+      ${f.vikt?`<div>Vikt: <span>${f.vikt}</span></div>`:''}
+      ${f.volym?`<div>Volym: <span>${f.volym}</span></div>`:''}
+    </div>
+    ${f.meddelande?`<div style="font-size:12px;color:#666;background:#f9f9f7;border-radius:8px;padding:10px;margin-bottom:10px">${f.meddelande}</div>`:''}
+    <div class="fr-actions">${actions}</div>
+  </div>`;
+}
+
+async function taBortForfraganPartner(fpId, forfraganId){
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+  await fetch(SB_URL+'/rest/v1/forfragan_partners?id=eq.'+fpId, {method:'DELETE', headers:h});
+  laddaAll();
+}
+
+// ===== PARTNER MODAL =====
+function oppnaPartnerModal(id){
+  currentForfragan = allForfragan.find(f=>f.id===id);
+  if(!currentForfragan) return;
+  const f = currentForfragan;
+  document.getElementById('partner-forfragan-info').innerHTML = `
+    <b>${f.kund_namn||f.kund_email}</b> — ${f.från_ort} → ${f.till_ort}<br>
+    <span style="color:#888">${f.transport_typ} · ${f.gods_typ||''} · ${f.datum||'–'}</span>
+  `;
+
+  // Load partners and show checkboxes
+  laddaPartners().then(()=>{
+    renderPartnerCheckboxes('');
+    const sok = document.getElementById('partner-sok');
+    if(sok) sok.value = '';
+  });
+
+  // Bygg godsbeskrivning från tillgängliga fält
+  const godsRader = [];
+  if(f.gods_typ) godsRader.push(`Gods: ${f.gods_typ}`);
+  if(f.vikt) godsRader.push(`Vikt: ${f.vikt} kg`);
+  if(f.volym) godsRader.push(`Volym: ${f.volym} m³`);
+  if(f.langd||f.bredd||f.hojd) godsRader.push(`Mått: ${f.langd||'?'}×${f.bredd||'?'}×${f.hojd||'?'} cm`);
+  if(f.container) godsRader.push(`Container: ${f.container}`);
+  if(f.lcl_fcl) godsRader.push(`LCL/FCL: ${f.lcl_fcl}`);
+  if(f.incoterms) godsRader.push(`Incoterms: ${f.incoterms}`);
+  if(f.meddelande) godsRader.push(`\nKundens info:\n${f.meddelande}`);
+  const godsText = godsRader.length > 0 ? godsRader.join('\n') : 'Se bifogad information från kunden.';
+  
+  document.getElementById('partner-meddelande').value = `Hej,\n\nVi har en kund som behöver ${f.transport_typ?.toLowerCase()||'transport'} från ${f.från_ort} till ${f.till_ort}.\n\n${godsText}\n\nÖnskat datum: ${f.datum||'–'}\nKund: ${f.kund_namn||'–'}\n\nVänligen återkom med er bästa offert via länken nedan.\n\nMed vänliga hälsningar,\nSimptra AB`;
+  const deadline = new Date(); deadline.setDate(deadline.getDate()+3);
+  document.getElementById('partner-deadline').value = deadline.toISOString().split('T')[0];
+  document.getElementById('partner-overlay').classList.add('open');
+}
+
+async function skickaTillPartners(){
+  if(!currentForfragan) return;
+  await laddaPartners();
+
+  const selected = allPartners.filter(p => {
+    const cb = document.getElementById('partner-cb-'+p.id);
+    return cb && cb.checked;
+  });
+
+  if(!selected.length){ toast('Välj minst en partner'); return; }
+
+  const f = currentForfragan;
+  const meddelande = document.getElementById('partner-meddelande').value;
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+
+  // Save to forfragan_partners - använd ON CONFLICT för att undvika duplikat
+  await fetch(SB_URL+'/rest/v1/forfragan_partners', {
+    method:'POST', headers:{...h,'Prefer':'return=minimal,resolution=ignore-duplicates'},
+    body: JSON.stringify(selected.map(p=>({
+      forfragan_id:  f.id,
+      partner_id:    p.id,
+      partner_namn:  p.namn,
+      partner_email: p.email,
+    })))
+  });
+
+  // Send mail to each partner
+  for(const p of selected){
+    await fetch(WORKER+'/mail', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        from: 'Simptra AB <andreas.karlsson@simpeltransport.se>',
+        to: [p.email],
+        subject: `Transportförfrågan från Simptra AB: ${f.transport_typ} ${f.från_ort} → ${f.till_ort}`,
+        html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+          <div style="background:linear-gradient(135deg,#00897B,#00BFA5);padding:24px;border-radius:12px 12px 0 0">
+            <h1 style="color:#fff;margin:0;font-size:20px">Simptra AB — Transportförfrågan</h1>
+          </div>
+          <div style="background:#f9f9f7;padding:24px;border-radius:0 0 12px 12px;border:1px solid #e8e8e2">
+            <p>Hej ${p.namn},</p><p>${meddelande}</p>
+            <div style="background:#fff;border-radius:8px;padding:16px;margin:16px 0;border:1px solid #e8e8e2">
+              <table style="width:100%;font-size:13px;color:#444">
+                <tr><td style="color:#888;padding:3px 0">Typ:</td><td><b>${f.transport_typ||'–'}</b></td></tr>
+                <tr><td style="color:#888;padding:3px 0">Från:</td><td><b>${f.från_ort||'–'}</b></td></tr>
+                <tr><td style="color:#888;padding:3px 0">Till:</td><td><b>${f.till_ort||'–'}</b></td></tr>
+                <tr><td style="color:#888;padding:3px 0">Datum:</td><td><b>${f.datum||'–'}</b></td></tr>
+                ${f.gods_typ?`<tr><td style="color:#888;padding:3px 0">Gods:</td><td><b>${f.gods_typ}</b></td></tr>`:''}
+                ${f.vikt?`<tr><td style="color:#888;padding:3px 0">Vikt:</td><td><b>${f.vikt}</b></td></tr>`:''}
+                ${f.incoterms?`<tr><td style="color:#888;padding:3px 0">Incoterms:</td><td><b>${f.incoterms}</b></td></tr>`:''}
+                ${f.lcl_fcl?`<tr><td style="color:#888;padding:3px 0">LCL/FCL:</td><td><b>${f.lcl_fcl}</b></td></tr>`:''}
+                ${f.container?`<tr><td style="color:#888;padding:3px 0">Container:</td><td><b>${f.container}</b></td></tr>`:''}
+              </table>
+            </div>
+            <div style="text-align:center">
+              <a href="https://simpeloffer.netlify.app/partner-offert.html" style="background:#009688;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600">Lämna offert →</a>
+            </div>
+          </div>
+        </div>`
+      })
+    });
+  }
+
+  await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+f.id, {method:'PATCH', headers:h, body:JSON.stringify({status:'skickad'})});
+  stangModal('partner-overlay');
+  toast(`✓ Skickat till ${selected.length} partner${selected.length!==1?'s':''}!`);
+  await laddaAll();
+}
+
+// ===== ERBJUDANDE MODAL =====
+function oppnaErbjudandeModal(id){
+  currentForfragan = allForfragan.find(f=>f.id===id);
+  if(!currentForfragan) return;
+  const f = currentForfragan;
+
+  document.getElementById('erb-forfragan-info').innerHTML = `
+    <b>${f.kund_namn||f.kund_email}</b> — ${f.från_ort} → ${f.till_ort}<br>
+    <span style="color:#888">${f.transport_typ} · ${f.gods_typ||''}</span>
+  `;
+
+  // Show anbud
+  const anbud = f.anbud||[];
+  document.getElementById('erb-anbud-list').innerHTML = anbud.length
+    ? anbud.map(a=>`<div class="anbud-item">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div class="anbud-partner">🤝 ${partnerVisningsnamn(a)}</div>
+          <span style="font-size:11px;background:${a.resultat==='accepterad'?'#e8f5e9':a.resultat==='nekad'?'#ffebee':'#e0f2f1'};color:${a.resultat==='accepterad'?'#2e7d32':a.resultat==='nekad'?'#c62828':'var(--accent)'};padding:2px 8px;border-radius:20px">${a.resultat==='accepterad'?'✓ Accepterat':a.resultat==='nekad'?'✗ Nekat':'Inväntar'}</span>
+        </div>
+        <div class="anbud-pris">${Math.round(a.pris||0).toLocaleString('sv-SE')} ${a.valuta||'SEK'}</div>
+        <div class="anbud-meta">${a.leveranstid||''} ${a.meddelande?'· '+a.meddelande:''}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-blue" style="font-size:11px;padding:4px 10px" onclick="anvandAnbud(${a.pris})">Använd pris</button>
+          <button class="btn" style="font-size:11px;padding:4px 10px;background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32" onclick="sattAnbudResultat('${a.id}','accepterad')">✓ Acceptera</button>
+          <button class="btn" style="font-size:11px;padding:4px 10px;background:#ffebee;border-color:#ffcdd2;color:#c62828" onclick="sattAnbudResultat('${a.id}','nekad')">✗ Neka</button>
+        </div>
+      </div>`).join('')
+    : '<div style="font-size:12px;color:#888;padding:10px">Inga anbud inkomna ännu — fyll i pris manuellt</div>';
+
+  document.getElementById('erb-inkop').value = '';
+  document.getElementById('erb-forsalj').value = '';
+  document.getElementById('erb-marginal').textContent = '–';
+  document.getElementById('erb-vinst').textContent = '–';
+  document.getElementById('erb-leveranstid').value = '';
+  document.getElementById('erb-meddelande').value = `Hej ${f.kund_namn||''},\n\nTack för din förfrågan. Vi har ett erbjudande för din ${f.transport_typ?.toLowerCase()||'transport'} från ${f.från_ort} till ${f.till_ort}.\n\nMed vänliga hälsningar,\nSimptra AB`;
+
+  const giltig = new Date(); giltig.setDate(giltig.getDate()+7);
+  document.getElementById('erb-giltig').value = giltig.toISOString().split('T')[0];
+  document.getElementById('erbjudande-overlay').classList.add('open');
+}
+
+async function sattAnbudResultat(anbudId, resultat){
+  const kommentar = resultat === 'nekad'
+    ? prompt('Ange anledning till nekad (visas för partnern):') || ''
+    : '';
+
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const resp = await fetch(SB_URL+'/rest/v1/anbud?id=eq.'+anbudId, {method:'PATCH',headers:h,body:JSON.stringify({resultat,admin_kommentar:kommentar})});
+  if(!resp.ok){ toast('Fel: '+resp.status); return; }
+  toast(resultat==='accepterad' ? '✓ Anbud accepterat!' : '✗ Anbud nekat');
+  await laddaAll();
+  // Re-open erbjudande modal if still open
+  if(currentForfragan) oppnaErbjudandeModal(currentForfragan.id);
+}
+
+function anvandAnbud(pris){
+  document.getElementById('erb-inkop').value   = Math.round(pris);
+  document.getElementById('erb-forsalj').value = Math.round(pris * 1.25);
+  beraknaMarginal();
+}
+
+// Valutakurser cache
+let _kurser = {};
+let _kurserHamtade = null;
+
+async function hamtaKurser(){
+  const nu = Date.now();
+  if(_kurserHamtade && nu - _kurserHamtade < 3600000) return; // cache 1h
+  try {
+    const resp = await fetch(WORKER+'/fx');
+    const data = await resp.json();
+    // data.rates är EUR/USD/GBP per 1 SEK → vi vill SEK per valuta
+    _kurser = {};
+    for(const [k,v] of Object.entries(data.rates||{})){
+      _kurser[k] = 1/v; // SEK per 1 EUR/USD/GBP
+    }
+    _kurser['SEK'] = 1;
+    _kurserHamtade = nu;
+  } catch(e){ _kurser = {SEK:1,EUR:11.5,USD:10.5,GBP:13.0,CNY:1.45}; }
+}
+
+function tillSEK(belopp, valuta){
+  return belopp * (_kurser[valuta]||1);
+}
+
+async function beraknaMarginal(){
+  await hamtaKurser();
+  const inkopVal  = document.getElementById('erb-inkop-valuta')?.value||'SEK';
+  const forsaljVal= document.getElementById('erb-forsalj-valuta')?.value||'SEK';
+  const inkop     = parseFloat(document.getElementById('erb-inkop').value)||0;
+  const forsalj   = parseFloat(document.getElementById('erb-forsalj').value)||0;
+  const inkopSEK  = tillSEK(inkop, inkopVal);
+  const forsaljSEK= tillSEK(forsalj, forsaljVal);
+  const vinst     = forsaljSEK - inkopSEK;
+  const palag     = inkopSEK > 0 ? (vinst/inkopSEK*100).toFixed(1) : 0;
+
+  document.getElementById('erb-marginal').textContent = palag+'% pålägg';
+  document.getElementById('erb-vinst').textContent    = Math.round(vinst).toLocaleString('sv-SE')+' kr';
+
+  // Visa kurs-info om valuta skiljer sig
+  const kursEl = document.getElementById('erb-kurs-info');
+  const kursTxt = document.getElementById('erb-kurs-text');
+  const visaKurs = inkopVal!=='SEK'||forsaljVal!=='SEK';
+  if(kursEl) kursEl.style.display = visaKurs?'block':'none';
+  if(kursTxt){
+    const rader = [];
+    if(inkopVal!=='SEK') rader.push(`1 ${inkopVal} = ${(_kurser[inkopVal]||1).toFixed(2)} SEK`);
+    if(forsaljVal!=='SEK'&&forsaljVal!==inkopVal) rader.push(`1 ${forsaljVal} = ${(_kurser[forsaljVal]||1).toFixed(2)} SEK`);
+    kursTxt.textContent = rader.join(' · ');
+  }
+}
+
+async function accepteraAtKund(){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  if(!currentForfragan) return;
+  const f = currentForfragan;
+  const erb = f.erbjudande?.find(e=>e.status==='skickat') || f.erbjudande?.[0];
+  if(!confirm(`Acceptera erbjudandet åt ${f.kund_namn||f.kund_email}?\nDetta markerar förfrågan som accepterad utan att kunden behöver logga in.`)) return;
+
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+
+  // Uppdatera erbjudande till accepterat
+  if(erb) await fetch(SB_URL+'/rest/v1/erbjudande?id=eq.'+erb.id, {method:'PATCH',headers:h,body:JSON.stringify({status:'accepterat'})});
+
+  // Uppdatera förfrågan till accepterad
+  await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+f.id, {method:'PATCH',headers:h,body:JSON.stringify({status:'accepterad'})});
+
+  // Uppdatera lokalt så skapaBokning får rätt pris
+  if(erb) erb.status = 'accepterat';
+  f.status = 'accepterad';
+
+  stangModal('erbjudande-overlay');
+  toast('✓ Accepterat åt '+(f.kund_namn||f.kund_email));
+  laddaAll();
+}
+
+async function skickaErbjudande(){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  if(!currentForfragan) return;
+  await hamtaKurser();
+  const inkopVal   = document.getElementById('erb-inkop-valuta')?.value||'SEK';
+  const forsaljVal = document.getElementById('erb-forsalj-valuta')?.value||'SEK';
+  const inkopRaw   = parseFloat(document.getElementById('erb-inkop').value)||0;
+  const forsaljRaw = parseFloat(document.getElementById('erb-forsalj').value)||0;
+  if(!forsaljRaw){ toast('Ange försäljningspris'); return; }
+
+  const inkopSEK   = Math.round(tillSEK(inkopRaw, inkopVal));
+  const forsaljSEK = Math.round(tillSEK(forsaljRaw, forsaljVal));
+
+  const f = currentForfragan;
+  const leveranstid = document.getElementById('erb-leveranstid').value;
+  const giltig = document.getElementById('erb-giltig').value;
+  const meddelande = document.getElementById('erb-meddelande').value;
+
+  // Prisvisning i mail — visa i vald valuta
+  const prisVisning = forsaljVal==='SEK'
+    ? `${forsaljSEK.toLocaleString('sv-SE')} SEK`
+    : `${forsaljRaw.toLocaleString('sv-SE')} ${forsaljVal} (${forsaljSEK.toLocaleString('sv-SE')} SEK)`;
+
+  const hErb = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const erbResp = await fetch(SB_URL+'/rest/v1/erbjudande', {method:'POST',headers:hErb,body:JSON.stringify({
+    forfragan_id:f.id,pris_inkop:inkopSEK,pris_forsaljning:forsaljSEK,
+    marginal:forsaljSEK>0?(forsaljSEK-inkopSEK)/forsaljSEK:0,leveranstid,giltig_till:giltig,meddelande,status:'skickat',
+    transport_typ: document.getElementById('erb-typ')?.value || f.transport_typ || null
+  })});
+  if(!erbResp.ok){ toast('Fel: '+erbResp.status); return; }
+  await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+f.id, {method:'PATCH',headers:hErb,body:JSON.stringify({status:'erbjuden'})});
+
+  // Skicka mail till kunden
+  try {
+    await fetch(WORKER+'/mail', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        from: 'Simptra AB <andreas.karlsson@simpeltransport.se>',
+        to: [f.kund_email],
+        subject: `Erbjudande från Simptra AB — ${f.från_ort} → ${f.till_ort}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+            <div style="background:linear-gradient(135deg,#00897B,#00BFA5);padding:28px;border-radius:12px 12px 0 0;text-align:center">
+              <h1 style="color:#fff;margin:0;font-size:22px">🎉 Du har fått ett erbjudande!</h1>
+              <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px">Simptra AB — Transporterbjudande</p>
+            </div>
+            <div style="background:#fff;padding:28px;border:1px solid #e8e8e2;border-top:none;border-radius:0 0 12px 12px">
+              <p style="color:#444;margin-top:0">Hej ${f.kund_namn||''},</p>
+              <p style="color:#444">${meddelande}</p>
+              
+              <div style="background:#f0faf8;border:2px solid #b2dfdb;border-radius:10px;padding:20px;margin:20px 0;text-align:center">
+                <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">Ert pris</div>
+                <div style="font-size:36px;font-weight:700;color:#009688">${prisVisning}</div>
+                ${leveranstid?`<div style="font-size:13px;color:#666;margin-top:6px">Leveranstid: ${leveranstid}</div>`:''}
+                ${giltig?`<div style="font-size:12px;color:#999;margin-top:4px">Erbjudandet gäller till: ${giltig}</div>`:''}
+              </div>
+
+              <div style="background:#f9f9f7;border-radius:8px;padding:14px;margin-bottom:20px;font-size:13px;color:#555">
+                <b>${f.transport_typ}</b>: ${f.från_ort} → ${f.till_ort}<br>
+                ${f.gods_typ?`Gods: ${f.gods_typ}<br>`:''}
+                ${f.datum?`Datum: ${f.datum}`:''}
+              </div>
+
+              <div style="text-align:center">
+                <a href="https://simpeloffer.netlify.app/offert.html" 
+                   style="background:#009688;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block">
+                  Se erbjudandet →
+                </a>
+              </div>
+              <p style="color:#aaa;font-size:11px;margin-top:24px;text-align:center">
+                Simptra AB · simpeltransport.se
+              </p>
+            </div>
+          </div>
+        `
+      })
+    });
+    toast('✓ Erbjudande skickat och mail till '+f.kund_email+'!');
+  } catch(e){
+    toast('✓ Erbjudande sparat — mail kunde inte skickas');
+  }
+
+  stangModal('erbjudande-overlay');
+  await laddaAll();
+}
+
+function faktureraOffert(id){
+  if(!erAdmin() && !erEkonomi()){ toast('⛔ Du har inte behörighet att fakturera'); return; }
+  const f = allForfragan.find(x=>x.id===id);
+  if(!f) return;
+  const erb = f.erbjudande?.find(e=>e.status==='accepterat') || f.erbjudande?.[0];
+  const params = new URLSearchParams({
+    kund: f.kund_namn||f.kund_email||'',
+    ref:  f.id.substring(0,8),
+    pris: Math.round(erb?.pris_forsaljning||0),
+    desc: (f.transport_typ||'Sjöfrakt')+': '+(f.från_ort||'')+' → '+(f.till_ort||''),
+  });
+  // Sätt status fakturerad så förfrågan försvinner från accepterade
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+id, {method:'PATCH',headers:h,body:JSON.stringify({status:'fakturerad'})})
+    .then(()=>laddaAll());
+  visaIframe('https://simpeloffer.netlify.app/faktura.html?'+params.toString(), document.querySelector('.sys-link'));
+}
+
+function skapaBokning(forfraganId){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  const f = allForfragan.find(x=>x.id===forfraganId);
+  if(!f) return;
+  const erb = f.erbjudande?.find(e=>e.status==='accepterat') || f.erbjudande?.[0];
+  const accepteratAnbud = f.anbud?.find(a=>a.resultat==='accepterad') || f.anbud?.find(a=>a.status==='inkommen') || f.anbud?.[0];
+  const partner = accepteratAnbud?.partner_namn || accepteratAnbud?.partner_email || '';
+  const inkop = erb?.pris_inkop || accepteratAnbud?.pris || 0;
+  const forsaljning = erb?.pris_forsaljning || 0;
+  const leveranstid = erb?.leveranstid || '';
+  const kommentar = `Offert: ${f.från_ort} → ${f.till_ort}${leveranstid?' · Leveranstid: '+leveranstid:''}`;
+
+  const params = new URLSearchParams({
+    kund:        f.kund_namn||f.kund_email||'',
+    typ:         f.transport_typ||'',
+    etd:         f.datum||'',
+    ref:         f.po||f.id.substring(0,8),
+    partner:     partner,
+    inkop:       inkop,
+    forsaljning: forsaljning,
+    kommentar:   kommentar,
+    ny_bokning:  '1',
+  });
+
+  // Markera förfrågan som bokad så den försvinner från accepterade
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+forfraganId, {method:'PATCH',headers:h,body:JSON.stringify({status:'bokad'})})
+    .then(()=>laddaAll());
+
+  window.open('https://simpeloffer.netlify.app/bokningar.html?'+params.toString(),'_blank');
+  toast('📦 Öppnar bokningssystemet!');
+}
+
+function stangModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+async function taBortForfragan(id, kund, rutt){
+  if(!confirm('Vill du verkligen ta bort förfrågan från '+kund+' ('+rutt+')?\n\nDetta går inte att ångra.')) return;
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  await fetch(SB_URL+'/rest/v1/anbud?forfragan_id=eq.'+id, {method:'DELETE',headers:h});
+  await fetch(SB_URL+'/rest/v1/forfragan_partners?forfragan_id=eq.'+id, {method:'DELETE',headers:h});
+  await fetch(SB_URL+'/rest/v1/erbjudande?forfragan_id=eq.'+id, {method:'DELETE',headers:h});
+  const resp = await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+id, {method:'DELETE',headers:h});
+  if(!resp.ok){ toast('Fel: '+resp.status); return; }
+  toast('🗑 Förfrågan borttagen');
+  await laddaAll();
+}
+
+async function andraForfraganStatus(id, el){
+  const nyStatus = el.value;
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const resp = await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+id, {method:'PATCH',headers:h,body:JSON.stringify({status:nyStatus})});
+  if(!resp.ok){ toast('Fel: '+resp.status); return; }
+  const colors = {ny:['#e3f2fd','#1565c0'],skickad:['#fff8e1','#f57f17'],erbjuden:['#e8f5e9','#2e7d32'],accepterad:['#e8f5e9','#2e7d32'],avbokad:['#ffebee','#c62828']};
+  const c = colors[nyStatus]||colors.ny;
+  el.style.background = c[0]; el.style.color = c[1];
+  toast('✓ Status ändrad till: '+nyStatus);
+  await laddaAll();
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ===== KUNDER & INLOGG =====
+async function laddaKunder(){
+  const el = document.getElementById('view-kunder');
+  el.innerHTML = '<div class="empty">Laddar kunder...</div>';
+
+  // Hämta alla aktiva kunder
+  const kResp = await fetch(SB_URL+'/rest/v1/transport_kunder?select=id,namn,email,aktiv,telefon,kontakt,ort,transport_typ&aktiv=eq.true&order=namn',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  const kunder = await kResp.json();
+
+  // Hämta alla kund_anvandare-kopplingar
+  const kaResp = await fetch(SB_URL+'/rest/v1/kund_anvandare?select=id,kund_id,user_id,roll',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+  const kopplingar = await kaResp.json();
+
+  // Bygg upp kopplingar per kund
+  const kopplingPerKund = {};
+  kopplingar.forEach(k => {
+    if(!kopplingPerKund[k.kund_id]) kopplingPerKund[k.kund_id] = [];
+    kopplingPerKund[k.kund_id].push(k);
+  });
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:16px;font-weight:600">👥 Kunder & inlogg</h2>
+    </div>
+    <div id="kunder-list">
+    ${kunder.map(k => {
+      const logins = kopplingPerKund[k.id] || [];
+      return `<div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.06)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div>
+            <div style="font-size:14px;font-weight:600">${k.namn||'–'}</div>
+            <div style="font-size:12px;color:#888">${k.email||''}</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="redigeraKund('${k.id}','${(k.namn||'').replace(/'/g,"\\'")}','${(k.email||'').replace(/'/g,"\\'")}','${(k.telefon||'').replace(/'/g,"\\'")}','${(k.kontakt||'').replace(/'/g,"\\'")}','${(k.ort||'').replace(/'/g,"\\'")}','${(k.transport_typ||'').replace(/'/g,"\\'")}' )" style="background:#f5f5f0;color:#555;border:1px solid #e8e8e2;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:var(--font);font-weight:500">✏️</button>
+            <button onclick="taBortKund('${k.id}','${(k.namn||'').replace(/'/g,"\\'")}','${logins.length}')" style="background:#ffebee;color:#c62828;border:1px solid #ffcdd2;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:var(--font);font-weight:500">🗑</button>
+            <button onclick="oppnaLaggTillInlogg('${k.id}','${(k.namn||'').replace(/'/g,"\\'")}','${(k.email||'').replace(/'/g,"\\'")}','${k.id}')" style="background:#009688;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:var(--font);font-weight:500">+ Lägg till inlogg</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${logins.length === 0
+            ? '<span style="font-size:12px;color:#bbb">Inga inlogg kopplade ännu</span>'
+            : logins.map(l => `
+              <div style="display:flex;align-items:center;gap:8px;background:#f5f5f0;border-radius:8px;padding:6px 12px;font-size:12px">
+                <span>👤 ${l.user_id.substring(0,8)}...</span>
+                <span style="color:#888">${l.roll||'läsare'}</span>
+                <button onclick="taBortInlogg('${l.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;line-height:1;padding:0 2px" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#ccc'">×</button>
+              </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+    </div>
+
+    <!-- Modal: Redigera kund -->
+    <div id="modal-redigera-kund" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:18px">✏️ Redigera kund</div>
+        <input type="hidden" id="rk-id">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="grid-column:1/-1">
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">Företagsnamn</label>
+            <input id="rk-namn" class="form-input" type="text" placeholder="Företagsnamn">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">E-post</label>
+            <input id="rk-email" class="form-input" type="email" placeholder="info@foretag.se">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">Telefon</label>
+            <input id="rk-telefon" class="form-input" type="text" placeholder="+46...">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">Kontaktperson</label>
+            <input id="rk-kontakt" class="form-input" type="text" placeholder="Namn">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">Stad</label>
+            <input id="rk-ort" class="form-input" type="text" placeholder="Stockholm">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:8px">Transporttyp</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${['SEA','ROAD','AIR','COURIER','CUSTOMS'].map(t=>`
+                <label style="display:flex;align-items:center;gap:6px;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;font-weight:500">
+                  <input type="checkbox" id="rk-typ-${t}" value="${t}" style="accent-color:#009688"> ${t}
+                </label>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('modal-redigera-kund').style.display='none'" style="background:#f5f5f0;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:var(--font)">Avbryt</button>
+          <button onclick="sparaKund()" style="background:#009688;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">✓ Spara</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Lägg till inlogg -->
+    <div id="modal-inlogg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+      <div style="background:#fff;border-radius:16px;padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:4px">➕ Lägg till inlogg</div>
+        <div id="modal-inlogg-kund" style="font-size:12px;color:#888;margin-bottom:18px"></div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">E-post (nytt inlogg)</label>
+          <input id="inlogg-email" class="form-input" type="email" placeholder="kontakt@foretag.se">
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:500;color:#777;display:block;margin-bottom:5px">Lösenord</label>
+          <input id="inlogg-pass" class="form-input" type="text" placeholder="Minst 6 tecken" value="Kund2026!">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="document.getElementById('modal-inlogg').style.display='none'" style="background:#f5f5f0;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:var(--font)">Avbryt</button>
+          <button onclick="skapaInlogg()" style="background:#009688;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">✓ Skapa inlogg</button>
+        </div>
+        <div id="inlogg-err" style="display:none;margin-top:12px;background:#ffebee;border-radius:8px;padding:10px;font-size:12px;color:#c62828"></div>
+      </div>
+    </div>
+  `;
+  // Fix: modal starts hidden
+  document.getElementById('modal-inlogg').style.display = 'none';
+}
+
+let _inloggKundId = null;
+let _inloggKundNamn = '';
+
+function oppnaLaggTillInlogg(kundId, kundNamn, kundEmail, dbKundId){
+  _inloggKundId = dbKundId;
+  _inloggKundNamn = kundNamn;
+  document.getElementById('modal-inlogg-kund').textContent = kundNamn + (kundEmail ? ' · ' + kundEmail : '');
+  document.getElementById('inlogg-email').value = '';
+  document.getElementById('inlogg-pass').value = 'Kund2026!';
+  document.getElementById('inlogg-err').style.display = 'none';
+  document.getElementById('modal-inlogg').style.display = 'flex';
+}
+
+async function skapaInlogg(){
+  const email = document.getElementById('inlogg-email').value.trim();
+  const pass  = document.getElementById('inlogg-pass').value.trim();
+  const errEl = document.getElementById('inlogg-err');
+  errEl.style.display = 'none';
+
+  if(!email || !pass){ errEl.textContent = 'Fyll i e-post och lösenord'; errEl.style.display='block'; return; }
+  if(pass.length < 6){ errEl.textContent = 'Lösenordet måste vara minst 6 tecken'; errEl.style.display='block'; return; }
+
+  // Skapa auth-användare via Supabase Admin (service_role behövs — använd edge function / worker)
+  // Här anropar vi vår Cloudflare Worker som proxy
+  const workerResp = await fetch('https://claudeproxy.andreas-karlsson.workers.dev/create-user', {
+    method: 'POST',
+    headers: await getAdminHeaders(),
+    body: JSON.stringify({email, password: pass, kund_id: _inloggKundId})
+  });
+  const result = await workerResp.json();
+
+  if(!workerResp.ok || result.error){
+    errEl.textContent = result.error || 'Kunde inte skapa användare';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Koppla user_id till kund i kund_anvandare
+  await fetch(SB_URL+'/rest/v1/kund_anvandare', {
+    method: 'POST',
+    headers: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body: JSON.stringify({user_id: result.user_id, kund_id: _inloggKundId, roll:'läsare'})
+  });
+
+  document.getElementById('modal-inlogg').style.display = 'none';
+  toast('✓ Inlogg skapat för '+email+' och kopplat till '+_inloggKundNamn);
+  laddaKunder();
+}
+
+function redigeraKund(id, namn, email, telefon, kontakt, ort, typ){
+  document.getElementById('rk-id').value      = id;
+  document.getElementById('rk-namn').value    = namn;
+  document.getElementById('rk-email').value   = email;
+  document.getElementById('rk-telefon').value = telefon;
+  document.getElementById('rk-kontakt').value = kontakt;
+  document.getElementById('rk-ort').value     = ort;
+  const typer = (typ||'').toUpperCase();
+  ['SEA','ROAD','AIR','COURIER','CUSTOMS'].forEach(t=>{
+    const cb = document.getElementById('rk-typ-'+t);
+    if(cb) cb.checked = typer.includes(t);
+  });
+  const modal = document.getElementById('modal-redigera-kund');
+  modal.style.display = 'flex';
+}
+
+async function sparaKund(){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  const id = document.getElementById('rk-id').value;
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const valdaTyper = ['SEA','ROAD','AIR','COURIER','CUSTOMS'].filter(t=>document.getElementById('rk-typ-'+t)?.checked).join(', ');
+  await fetch(SB_URL+'/rest/v1/transport_kunder?id=eq.'+id, {
+    method:'PATCH', headers:h,
+    body: JSON.stringify({
+      namn:          document.getElementById('rk-namn').value.trim(),
+      email:         document.getElementById('rk-email').value.trim(),
+      telefon:       document.getElementById('rk-telefon').value.trim(),
+      kontakt:       document.getElementById('rk-kontakt').value.trim(),
+      ort:           document.getElementById('rk-ort').value.trim(),
+      transport_typ: valdaTyper,
+    })
+  });
+  document.getElementById('modal-redigera-kund').style.display = 'none';
+  toast('✓ Kund uppdaterad');
+  laddaKunder();
+}
+
+async function taBortKund(kundId, namn, antalInlogg){
+  const msg = `Arkivera ${namn}?\nKunden döljs från listan men data bevaras.`;
+  if(!confirm(msg)) return;
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  await fetch(SB_URL+'/rest/v1/transport_kunder?id=eq.'+kundId, {
+    method:'PATCH', headers:h, body:JSON.stringify({aktiv:false})
+  });
+  toast('🗑 '+namn+' arkiverad');
+  laddaKunder();
+}
+
+async function taBortInlogg(kopplingId){
+  if(!confirm('Ta bort detta inlogg?')) return;
+  await fetch(SB_URL+'/rest/v1/kund_anvandare?id=eq.'+kopplingId, {
+    method:'DELETE',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  laddaKunder();
+}
+
+// ===== PARTNER HELPERS =====
+function partnerVisningsnamn(a){
+  // Försök hitta namn från allPartners via email
+  const email = a.partner_email || '';
+  const partner = (allPartners||[]).find(p => p.email === email);
+  const namn = partner?.namn || a.partner_namn || '';
+  if(namn && email) return namn + ' <span style="font-size:10px;color:#999;font-weight:400">(' + email + ')</span>';
+  if(namn) return namn;
+  if(email) return email;
+  return 'Partner';
+}
+
+// ===== PARTNERS =====
+async function laddaPartners(){
+  const resp = await fetch(SB_URL+'/rest/v1/partners?select=*&aktiv=eq.true&order=namn', {
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  });
+  const data = await resp.json();
+  allPartners = Array.isArray(data) ? data : [];
+}
+
+function renderPartnerCheckboxes(filter){
+  const partnerDiv = document.getElementById('partner-val');
+  if(!partnerDiv) return;
+  const filtered = filter ? allPartners.filter(p=>(p.namn||'').toLowerCase().includes(filter.toLowerCase())||(p.email||'').toLowerCase().includes(filter.toLowerCase())) : allPartners;
+  if(filtered.length){
+    partnerDiv.innerHTML = filtered.map(p=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f7;border-radius:8px;margin-bottom:6px;cursor:pointer;border:1px solid var(--border)">
+        <input type="checkbox" id="partner-cb-${p.id}" style="width:16px;height:16px;accent-color:var(--accent)">
+        <div>
+          <div style="font-size:13px;font-weight:500">${p.namn}</div>
+          <div style="font-size:11px;color:#888">${p.email||''} · ${p.typ||''}</div>
+        </div>
+      </label>
+    `).join('');
+  } else {
+    partnerDiv.innerHTML = '<div style="font-size:12px;color:#888;padding:10px">Inga partners matchar sökningen.</div>';
+  }
+}
+
+function filterPartnerVal(val){
+  renderPartnerCheckboxes(val);
+}
+
+async function renderPartners(){
+  await laddaPartners();
+  const el = document.getElementById('view-partners');
+
+  // Only build full HTML first time
+  if(!document.getElementById('partner-tbody')){
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div style="font-size:18px;font-weight:700">🤝 Partners (<span id="partner-count">${allPartners.length}</span>)</div>
+        <button class="btn btn-green" onclick="oppnaPartnerForm()">+ Ny partner</button>
+      </div>
+      <div id="partner-form" style="display:none;background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)">
+        <div class="form-grid" style="margin-bottom:12px">
+          <div class="form-group"><label class="form-label">Namn</label><input class="form-input" id="pf-namn" placeholder="Företagsnamn"></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="pf-email" type="email" placeholder="kontakt@partner.se"></div>
+          <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="pf-tel" placeholder="+46..."></div>
+          <div class="form-group"><label class="form-label">Typ</label>
+            <select class="form-select" id="pf-typ">
+              <option value="speditör">Speditör</option><option value="rederi">Rederi</option>
+              <option value="flygbolag">Flygbolag</option><option value="transport">Transport</option>
+              <option value="tullare">Tullare</option><option value="övrigt">Övrigt</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" id="partner-delete-btn" style="display:none;background:#ffebee;color:#c62828;border:1px solid #ffcdd2" onclick="taBortPartnerFranForm()">🗑 Ta bort</button>
+          <button class="btn" onclick="document.getElementById('partner-form').style.display='none';document.getElementById('partner-delete-btn').style.display='none'">Avbryt</button>
+          <button class="btn btn-green" id="partner-save-btn" onclick="sparaPartner()">Spara</button>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e8e8e2;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f5f5f0;border-bottom:1px solid #e8e8e2">
+              <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#888;text-align:left">Namn</th>
+              <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#888;text-align:left">Email</th>
+              <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#888;text-align:left">Telefon</th>
+              <th style="padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:#888;text-align:left">Typ</th>
+              <th style="padding:10px 16px"></th>
+            </tr>
+          </thead>
+          <tbody id="partner-tbody"></tbody>
+        </table>
+      </div>`;
+  }
+
+  // Always update just the tbody and count
+  const count = document.getElementById('partner-count');
+  if(count) count.textContent = allPartners.length;
+
+  const tbody = document.getElementById('partner-tbody');
+  tbody.innerHTML = allPartners.length ? allPartners.map(p=>`<tr style="border-bottom:1px solid #f0f0eb">
+    <td style="padding:12px 16px;font-size:13px;font-weight:500;color:#1a1a1a">${p.namn}</td>
+    <td style="padding:12px 16px;font-size:13px;color:#666">${p.email||'–'}</td>
+    <td style="padding:12px 16px;font-size:13px;color:#666">${p.telefon||'–'}</td>
+    <td style="padding:12px 16px"><span style="font-size:11px;background:#e0f2f1;color:#009688;padding:3px 10px;border-radius:20px;font-weight:500">${p.typ||'–'}</span></td>
+    <td style="padding:12px 16px;text-align:right;white-space:nowrap">
+      <button onclick="redigeraPartner('${p.id}')" style="background:none;border:1px solid #e8e8e2;border-radius:6px;cursor:pointer;color:#555;font-size:12px;padding:4px 12px;margin-right:4px;font-family:Inter,sans-serif">Redigera</button>
+      <button onclick="taBortPartner('${p.id}')" style="background:none;border:1px solid #ffcdd2;border-radius:6px;cursor:pointer;color:#ef5350;font-size:12px;padding:4px 12px;font-family:Inter,sans-serif">Ta bort</button>
+    </td>
+  </tr>`).join('') : `<tr><td colspan="5" style="padding:32px;text-align:center;color:#bbb;font-size:13px">Inga partners ännu</td></tr>`;
+}
+
+function redigeraPartner(id){
+  const p = allPartners.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('partner-form').style.display = 'block';
+  document.getElementById('pf-namn').value  = p.namn;
+  document.getElementById('pf-email').value = p.email||'';
+  document.getElementById('pf-tel').value   = p.telefon||'';
+  document.getElementById('pf-typ').value   = p.typ||'speditör';
+  const saveBtn = document.getElementById('partner-save-btn');
+  if(saveBtn){ saveBtn.textContent = 'Uppdatera'; saveBtn.onclick = () => uppdateraPartner(id); }
+  // Visa ta bort-knapp
+  const delBtn = document.getElementById('partner-delete-btn');
+  if(delBtn){ delBtn.style.display='inline-flex'; delBtn.dataset.id = id; }
+  document.getElementById('partner-form').scrollIntoView({behavior:'smooth'});
+}
+
+async function taBortPartnerFranForm(){
+  const id = document.getElementById('partner-delete-btn').dataset.id;
+  if(!id) return;
+  await taBortPartner(id);
+  document.getElementById('partner-delete-btn').style.display='none';
+}
+
+async function uppdateraPartner(id){
+  const namn  = document.getElementById('pf-namn').value.trim();
+  const email = document.getElementById('pf-email').value.trim();
+  if(!namn){ toast('Namn krävs'); return; }
+  const hP = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const pResp = await fetch(SB_URL+'/rest/v1/partners?id=eq.'+id, {method:'PATCH',headers:hP,body:JSON.stringify({namn,email,telefon:document.getElementById('pf-tel').value,typ:document.getElementById('pf-typ').value})});
+  if(!pResp.ok){ toast('Fel: '+pResp.status); return; }
+  toast('✓ Partner uppdaterad!');
+  document.getElementById('partner-form').style.display = 'none';
+  const saveBtn = document.getElementById('partner-save-btn');
+  if(saveBtn){ saveBtn.textContent = 'Spara'; saveBtn.onclick = sparaPartner; }
+  await laddaPartners();
+  const tbody = document.getElementById('partner-tbody');
+  if(tbody) tbody.innerHTML = allPartners.map(p=>`<tr style="border-bottom:1px solid #f0f0eb">
+    <td style="padding:12px 16px;font-size:13px;font-weight:500;color:#1a1a1a">${p.namn}</td>
+    <td style="padding:12px 16px;font-size:13px;color:#666">${p.email||'–'}</td>
+    <td style="padding:12px 16px;font-size:13px;color:#666">${p.telefon||'–'}</td>
+    <td style="padding:12px 16px"><span style="font-size:11px;background:#e0f2f1;color:#009688;padding:3px 10px;border-radius:20px;font-weight:500">${p.typ||'–'}</span></td>
+    <td style="padding:12px 16px;text-align:right;white-space:nowrap">
+      <button onclick="redigeraPartner('${p.id}')" style="background:none;border:1px solid #e8e8e2;border-radius:6px;cursor:pointer;color:#555;font-size:12px;padding:4px 12px;margin-right:4px;font-family:Inter,sans-serif">Redigera</button>
+      <button onclick="taBortPartner('${p.id}')" style="background:none;border:1px solid #ffcdd2;border-radius:6px;cursor:pointer;color:#ef5350;font-size:12px;padding:4px 12px;font-family:Inter,sans-serif">Ta bort</button>
+    </td>
+  </tr>`).join('');
+}
+
+function oppnaPartnerForm(){
+  const saveBtn = document.getElementById('partner-save-btn');
+  if(saveBtn){ saveBtn.textContent = 'Spara'; saveBtn.onclick = sparaPartner; }
+  ['pf-namn','pf-email','pf-tel'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const typ = document.getElementById('pf-typ'); if(typ) typ.value='speditör';
+  document.getElementById('partner-form').style.display='block';
+}
+
+async function sparaPartner(){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  const namn     = document.getElementById('pf-namn').value.trim();
+  const email    = document.getElementById('pf-email').value.trim();
+  const telefon  = document.getElementById('pf-tel').value;
+  const typ      = document.getElementById('pf-typ').value;
+  if(!namn||!email){ toast('Namn och email krävs'); return; }
+
+  // Generera temporärt lösenord
+  const tempPass = 'Partner' + Math.random().toString(36).slice(2,8).toUpperCase() + '!';
+
+  // Skapa Supabase Auth-konto via worker
+  const authResp = await fetch(WORKER+'/create-partner', {
+    method: 'POST',
+    headers: await getAdminHeaders(),
+    body: JSON.stringify({email, password: tempPass, namn})
+  });
+  const authData = await authResp.json();
+  if(authData.error && !authData.error.includes('already')) {
+    toast('Auth-fel: '+authData.error); return;
+  }
+
+  // Spara i partners-tabellen
+  const hSP = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const spResp = await fetch(SB_URL+'/rest/v1/partners', {method:'POST',headers:hSP,body:JSON.stringify({namn,email,telefon,typ,aktiv:true})});
+  if(!spResp.ok){ toast('Fel: '+spResp.status); return; }
+
+  // Lägg till partner-roll
+  if(authData.id) {
+    await fetch(SB_URL+'/rest/v1/user_roles', {method:'POST',headers:hSP,body:JSON.stringify({user_id:authData.id,role:'partner'})});
+  }
+
+  toast('✓ Partner skapad!');
+  alert(`✓ Partner "${namn}" skapad!\n\nEmail: ${email}\nTillfälligt lösenord: ${tempPass}\n\nSkicka dessa uppgifter till partnern!`);
+  document.getElementById('partner-form').style.display='none';
+  renderPartners();
+}
+
+async function taBortPartner(id){
+  if(!confirm('Ta bort partner?')) return;
+  const hTP={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  await fetch(SB_URL+'/rest/v1/partners?id=eq.'+id,{method:'PATCH',headers:hTP,body:JSON.stringify({aktiv:false})});
+  toast('🗑 Borttagen'); renderPartners();
+}
+
+// ===== AUTOCOMPLETE FRÅN/TILL =====
+const _acTimers = {};
+function acSokAdmin(input, listId){
+  const q = input.value.trim();
+  const list = document.getElementById(listId);
+  clearTimeout(_acTimers[listId]);
+  if(q.length < 2){ list.style.display='none'; return; }
+  _acTimers[listId] = setTimeout(async ()=>{
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=${encodeURIComponent(q)}`,
+        {headers:{'Accept-Language':'sv,en'}});
+      const data = await res.json();
+      if(!data.length){ list.style.display='none'; return; }
+      list.innerHTML = data.map(d=>{
+        const stad = d.address?.city||d.address?.town||d.address?.village||d.address?.county||d.name||'';
+        const land = d.address?.country||'';
+        const label = stad&&land?`${stad}, ${land}`:d.display_name.split(',').slice(0,2).join(',').trim();
+        return `<div onclick="acValjAdmin('${input.id}','${listId}','${label.replace(/'/g,"\\'")}')" 
+          style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f5f5f0" 
+          onmouseover="this.style.background='#f0faf8'" onmouseout="this.style.background=''">${stad||d.name} <small style="color:#888">${land}</small></div>`;
+      }).join('');
+      list.style.display = 'block';
+    } catch(e){ list.style.display='none'; }
+  }, 300);
+}
+function acValjAdmin(inputId, listId, val){
+  document.getElementById(inputId).value = val;
+  document.getElementById(listId).style.display = 'none';
+}
+document.addEventListener('click', e=>{
+  ['ac-nf-fran','ac-nf-till'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.contains(e.target)) el.style.display='none';
+  });
+});
+
+// ===== PDF → FÖRFRÅGAN =====
+async function laddaFranPDFForfragan(file){
+  if(!file) return;
+  toast('🤖 AI läser dokumentet...');
+
+  const base64 = await new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result.split(',')[1]);
+    r.onerror = ()=>rej(new Error('Read failed'));
+    r.readAsDataURL(file);
+  });
+
+  const prompt = `Du är en transportassistent. Läs detta transportdokument (packing list, invoice, eller liknande) och extrahera följande information. Svara ENDAST med ett JSON-objekt, inga förklaringar eller markdown.
+
+{
+  "kund_namn": "företagsnamn på köparen/mottagaren",
+  "kund_email": "email om den finns, annars null",
+  "gods": "kort beskrivning av godset",
+  "fran": "avsändningsstad och land, t.ex. HuiZhou, China",
+  "till": "destinationsstad och land, t.ex. Stockholm, Sverige",
+  "vikt": "totalvikt i kg som ett tal, annars null",
+  "volym": "volym i m3 som ett tal, annars null",
+  "kolli": "antal kolli/kartonger/pallar som text",
+  "datum": "önskat datum i format YYYY-MM-DD om det finns, annars null",
+  "meddelande": "kortfattad sammanfattning av godset och eventuella noteringar"
+}
+
+Om ett fält inte finns i dokumentet, sätt det till null.`;
+
+  try {
+    const resp = await fetch(WORKER+'/claude', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {type:'document', source:{type:'base64', media_type:'application/pdf', data: base64}},
+            {type:'text', text: prompt}
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text||'{}';
+    const clean = text.replace(/```json|```/g,'').trim();
+    const info = JSON.parse(clean);
+
+    // Fyll i formuläret
+    if(info.kund_namn){
+      const sel = document.getElementById('nf-kund-select');
+      // Kolla om kunden finns i listan
+      let found = false;
+      for(let opt of sel.options){
+        if(opt.dataset.namn && opt.dataset.namn.toLowerCase()===info.kund_namn.toLowerCase()){
+          sel.value = opt.value; valdKund(opt.value); found=true; break;
+        }
+      }
+      if(!found){
+        // Sätt till ny kund
+        sel.value = '';
+        valdKund('');
+        const nfKund = document.getElementById('nf-kund');
+        if(nfKund) nfKund.value = info.kund_namn;
+        const nfEmail = document.getElementById('nf-email');
+        if(nfEmail && info.kund_email) nfEmail.value = info.kund_email;
+      }
+    }
+    if(info.fran) document.getElementById('nf-fran').value = info.fran;
+    if(info.till) document.getElementById('nf-till').value = info.till;
+    if(info.gods) document.getElementById('nf-gods') && (document.getElementById('nf-gods').value = info.gods);
+    if(info.datum) document.getElementById('nf-datum') && (document.getElementById('nf-datum').value = info.datum);
+
+    // Bygg meddelande med all info
+    const msg = [];
+    if(info.meddelande) msg.push(info.meddelande);
+    if(info.kolli) msg.push('Kolli: '+info.kolli);
+    if(info.vikt) msg.push('Vikt: '+info.vikt+' kg');
+    if(info.volym) msg.push('Volym: '+info.volym+' m³');
+    const nfMedd = document.getElementById('nf-meddelande');
+    if(nfMedd && msg.length) nfMedd.value = msg.join('\n');
+
+    toast('✓ Dokument avläst — kontrollera och komplettera!');
+  } catch(e){
+    console.error(e);
+    toast('Kunde inte läsa dokumentet');
+  }
+}
+
+// ===== NY FÖRFRÅGAN MANUELLT =====
+function oppnaNyForfragan(){
+  closeSidebarMobile();
+  ['nf-kund','nf-email','nf-gods','nf-fran','nf-till','nf-meddelande'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  ['nf-typ','nf-incoterms','nf-kund-select'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  ['nf-vikt','nf-volym','nf-datum'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value='';
+  });
+  document.getElementById('nf-ny-kund-fields').style.display='none';
+
+  // Fyll kund-dropdown med befintliga kunder
+  const sel = document.getElementById('nf-kund-select');
+  // Hämta kunder från Supabase
+  fetch(SB_URL+'/rest/v1/transport_kunder?select=id,namn,email&aktiv=eq.true&order=namn',{
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+  }).then(r=>r.json()).then(kunder=>{
+    sel.innerHTML = '<option value="">— Välj befintlig kund —</option>' +
+      kunder.map(k=>`<option value="${k.id}" data-namn="${k.namn||''}" data-email="${k.email||''}">${k.namn}${k.email?' ('+k.email+')':''}</option>`).join('') +
+      '<option value="__ny__">+ Skapa ny kund</option>';
+  });
+
+  document.getElementById('ny-forfragan-overlay').classList.add('open');
+}
+
+function valdKund(val){
+  const nyFields = document.getElementById('nf-ny-kund-fields');
+  if(val === '__ny__'){
+    nyFields.style.display = 'block';
+    document.getElementById('nf-kund').value = '';
+    document.getElementById('nf-email').value = '';
+  } else if(val) {
+    nyFields.style.display = 'none';
+    // Fyll i kund-info från vald option
+    const opt = document.querySelector(`#nf-kund-select option[value="${val}"]`);
+    if(opt){
+      document.getElementById('nf-kund') && (document.getElementById('nf-kund').value = opt.dataset.namn||'');
+      document.getElementById('nf-email') && (document.getElementById('nf-email').value = opt.dataset.email||'');
+    }
+  } else {
+    nyFields.style.display = 'none';
+  }
+}
+
+async function sparaNyForfragan(){
+  if(erTestUser()){ toast('🧪 Testläge — data sparas inte'); return; }
+  const kundVal = document.getElementById('nf-kund-select').value;
+  let kund_namn = '', kund_email = '', kund_id = null;
+
+  if(kundVal && kundVal !== '__ny__'){
+    // Befintlig kund
+    const opt = document.querySelector(`#nf-kund-select option[value="${kundVal}"]`);
+    kund_namn  = opt?.dataset.namn || '';
+    kund_email = opt?.dataset.email || '';
+    kund_id    = kundVal;
+  } else if(kundVal === '__ny__'){
+    // Ny kund
+    kund_namn  = document.getElementById('nf-kund').value.trim();
+    kund_email = document.getElementById('nf-email').value.trim();
+    if(!kund_namn){ toast('Fyll i företagsnamn'); return; }
+    // Spara ny kund i transport_kunder
+    const h2 = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+    const kr = await fetch(SB_URL+'/rest/v1/transport_kunder', {method:'POST',headers:h2,body:JSON.stringify({namn:kund_namn,email:kund_email,aktiv:true})});
+    const kd = await kr.json();
+    kund_id = kd[0]?.id || null;
+  } else {
+    toast('Välj en kund'); return;
+  }
+
+  const typ  = document.getElementById('nf-typ').value;
+  const fran = document.getElementById('nf-fran').value.trim();
+  const till = document.getElementById('nf-till').value.trim();
+  if(!typ||!fran||!till){ toast('Fyll i typ, från och till'); return; }
+
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+  const resp = await fetch(SB_URL+'/rest/v1/forfragan', {
+    method:'POST', headers:h,
+    body: JSON.stringify({
+      kund_namn, kund_email, kund_id,
+      transport_typ: typ,
+      från_ort:      fran,
+      till_ort:      till,
+      gods_typ:      document.getElementById('nf-gods').value,
+      vikt:          parseFloat(document.getElementById('nf-vikt').value)||null,
+      volym:         document.getElementById('nf-volym').value,
+      incoterms:     document.getElementById('nf-incoterms').value,
+      datum:         document.getElementById('nf-datum').value||null,
+      meddelande:    document.getElementById('nf-meddelande').value,
+      status:        'ny',
+    })
+  });
+
+  if(!resp.ok){ toast('Fel: '+resp.status); return; }
+  toast('✓ Förfrågan skapad!');
+  stangModal('ny-forfragan-overlay');
+  await laddaAll();
+}
+
+// ===== AI KUNDMAIL PARSE =====
+function oppnaKundMailParse(){
+  closeSidebarMobile();
+  document.getElementById('kundmail-text').value = '';
+  document.getElementById('kundmail-result').style.display = 'none';
+  document.getElementById('kundmail-fil-input').value = '';
+  document.getElementById('kundmail-fil-namn').textContent = '';
+  document.getElementById('kundmail-overlay').classList.add('open');
+  setTimeout(()=>{
+    const input = document.getElementById('km-filer');
+    const lista = document.getElementById('km-filer-lista');
+    if(input){ input.value=''; }
+    if(lista){ lista.innerHTML=''; }
+    if(input) input.onchange = ()=>{
+      if(lista) lista.innerHTML = Array.from(input.files).map(f=>`<div>📄 ${f.name}</div>`).join('');
+    };
+  }, 100);
+}
+
+// Fil-hjälpfunktioner för kundmail
+let kundmailFiler = [];
+function kundmailFilVald(input){
+  kundmailFiler = Array.from(input.files);
+  document.getElementById('kundmail-fil-namn').textContent = kundmailFiler.map(f=>'📄 '+f.name).join('  ');
+}
+function kundmailDropFil(e){
+  e.preventDefault();
+  e.currentTarget.style.borderColor='';e.currentTarget.style.background='';
+  const files = Array.from(e.dataTransfer.files);
+  kundmailFiler = files;
+  document.getElementById('kundmail-fil-namn').textContent = files.map(f=>'📄 '+f.name).join('  ');
+  document.getElementById('kundmail-drop-zone').style.borderColor='#009688';
+}
+
+async function parseraKundMail(e){
+  const mailText = document.getElementById('kundmail-text').value.trim();
+  const harFiler = kundmailFiler.length > 0;
+  if(!mailText && !harFiler){ toast('Klistra in ett mail eller ladda upp en fil'); return; }
+  const btn = e.target; btn.textContent = '⏳ Analyserar...'; btn.disabled = true;
+
+  try {
+    // Bygg meddelande-innehåll med eventuella filer
+    const messageContent = [];
+    
+    // Lägg till bilagor som base64
+    for(const fil of kundmailFiler){
+      const b64 = await new Promise((res,rej)=>{
+        const r = new FileReader();
+        r.onload = ()=> res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(fil);
+      });
+      const ext = fil.name.split('.').pop().toLowerCase();
+      if(['pdf'].includes(ext)){
+        messageContent.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } });
+      } else if(['png','jpg','jpeg','gif','webp'].includes(ext)){
+        messageContent.push({ type:'image', source:{ type:'base64', media_type:fil.type||'image/jpeg', data:b64 } });
+      }
+    }
+    
+    // Lägg till textinstruktion
+    const instrText = `Du är en assistent som analyserar transportförfrågningar från kunder.
+Extrahera följande information och svara ENDAST med ett JSON-objekt, inget annat:
+
+{
+  "kund_namn": "företagsnamn på avsändaren",
+  "kund_email": "avsändarens email",
+  "fran": "avsändningsort, stad och land",
+  "till": "destinationsort, stad och land",
+  "transport_typ": "Sjö, Flyg, Road eller Courier",
+  "datum": "önskat datum YYYY-MM-DD eller tom sträng",
+  "meddelande": "sammanfattning av gods, mått, vikt och eventuella krav"
+}
+
+${mailText ? 'Mailet:\n'+mailText : 'Analysera de bifogade filerna.'}`;
+    
+    messageContent.push({ type:'text', text:instrText });
+
+    const resp = await fetch(WORKER+'/claude', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        messages:[{ role:'user', content: messageContent.length === 1 ? instrText : messageContent }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text||'{}';
+    const parsed = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0]||'{}');
+
+    document.getElementById('km-kund').value      = parsed.kund_namn||'';
+    document.getElementById('km-email').value     = parsed.kund_email||'';
+    document.getElementById('km-fran').value      = parsed.fran||'';
+    document.getElementById('km-till').value      = parsed.till||'';
+    document.getElementById('km-typ').value       = parsed.transport_typ||'Road';
+    document.getElementById('km-datum').value     = parsed.datum||'';
+    document.getElementById('km-meddelande').value= parsed.meddelande||'';
+    document.getElementById('kundmail-result').style.display = 'block';
+    toast('✓ AI har analyserat mailet!');
+  } catch(err){ toast('Fel: '+err.message); }
+  finally { btn.textContent='🤖 Analysera med AI'; btn.disabled=false; }
+}
+
+async function sparaKundForfragan(){
+  const kund_namn  = document.getElementById('km-kund').value.trim();
+  const kund_email = document.getElementById('km-email').value.trim();
+  const fran       = document.getElementById('km-fran').value.trim();
+  const till       = document.getElementById('km-till').value.trim();
+  if(!kund_namn||!fran||!till){ toast('Kund, från och till krävs'); return; }
+
+  const btn = document.getElementById('km-spara-btn');
+  btn.textContent = '⏳ Sparar...'; btn.disabled = true;
+
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+  const resp = await fetch(SB_URL+'/rest/v1/forfragan', {
+    method:'POST', headers:h,
+    body: JSON.stringify({
+      kund_namn, kund_email,
+      från_ort:      fran,
+      till_ort:      till,
+      transport_typ: document.getElementById('km-typ').value,
+      datum:         document.getElementById('km-datum').value||null,
+      meddelande:    document.getElementById('km-meddelande').value,
+      status:        'ny',
+    })
+  });
+
+  if(!resp.ok){ toast('Fel: '+resp.status); btn.textContent='✓ Skapa förfrågan'; btn.disabled=false; return; }
+
+  const nyForfragan = await resp.json();
+  const forfraganId = nyForfragan?.[0]?.id;
+
+  // Ladda upp dokument om det finns
+  const filer = document.getElementById('km-filer')?.files;
+  if(forfraganId && filer?.length){
+    btn.textContent = '⏳ Laddar upp dokument...';
+    for(const fil of filer){
+      const path = `forfragan-${forfraganId}/${fil.name}`;
+      await fetch(SB_URL+'/storage/v1/object/documents/'+path, {
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':fil.type,'x-upsert':'true'},
+        body: fil
+      });
+    }
+  }
+
+  stangModal('kundmail-overlay');
+  toast(`✓ Förfrågan skapad${filer?.length?' med '+filer.length+' dokument':''}!`);
+  btn.textContent='✓ Skapa förfrågan'; btn.disabled=false;
+  laddaAll();
+}
+
+// ===== AI MAIL PARSE =====
+function oppnaMailParse(){
+  closeSidebarMobile();
+  // Fyll dropdown med aktiva förfrågningar
+  const sel = document.getElementById('mail-forfragan-select');
+  sel.innerHTML = '<option value="">— Välj förfrågan —</option>' +
+    allForfragan.filter(f=>['ny','skickad'].includes(f.status)).map(f=>
+      `<option value="${f.id}">${f.kund_namn||f.kund_email} — ${f.från_ort||''} → ${f.till_ort||''} (${f.transport_typ||''})</option>`
+    ).join('');
+
+  // Fyll partner-dropdown
+  const partnerSel = document.getElementById('mp-partner-select');
+  if(partnerSel){
+    partnerSel.innerHTML = '<option value="">— Välj befintlig partner —</option><option value="__manuell__">✏️ Skriv in manuellt</option>' +
+      allPartners.filter(p=>p.aktiv).map(p=>
+        `<option value="${p.namn}||${p.email||''}">${p.namn}${p.email?' · '+p.email:''}</option>`
+      ).join('');
+  }
+
+  document.getElementById('mail-text').value = '';
+  document.getElementById('mail-parse-result').style.display = 'none';
+  document.getElementById('mp-spara-btn').style.display = 'none';
+  document.getElementById('mail-parse-overlay').classList.add('open');
+}
+
+async function parsaMail(){
+  const mailText = document.getElementById('mail-text').value.trim();
+  if(!mailText){ toast('Klistra in ett mail först'); return; }
+
+  const btn = event.target;
+  btn.textContent = '⏳ Analyserar...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch(WORKER+'/claude', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: `Du är en assistent som analyserar prismejl från transportleverantörer. 
+Extrahera följande information från mejlet och svara ENDAST med ett JSON-objekt, inget annat:
+
+{
+  "partner_namn": "företagsnamn",
+  "partner_email": "email om du hittar den, annars tom sträng",
+  "pris_sek": nummer (totalpris i SEK, konvertera om nödvändigt),
+  "valuta": "SEK",
+  "leveranstid": "t.ex. 5-7 dagar",
+  "giltig_till": "YYYY-MM-DD format om du hittar det, annars tom sträng",
+  "meddelande": "kort sammanfattning av viktiga villkor"
+}
+
+Mejlet:
+${mailText}`
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || '';
+    
+    // Parsa JSON från svaret
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch){ toast('AI kunde inte analysera mailet'); return; }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    // Fyll i formuläret
+    document.getElementById('mp-partner').value = parsed.partner_namn || '';
+    document.getElementById('mp-email').value = parsed.partner_email || '';
+    document.getElementById('mp-pris').value = parsed.pris_sek || '';
+    document.getElementById('mp-valuta').value = parsed.valuta || 'SEK';
+    document.getElementById('mp-leveranstid').value = parsed.leveranstid || '';
+    document.getElementById('mp-giltig').value = parsed.giltig_till || '';
+    document.getElementById('mp-meddelande').value = parsed.meddelande || '';
+    
+    document.getElementById('mail-parse-result').style.display = 'block';
+    document.getElementById('mp-spara-btn').style.display = 'inline-flex';
+    toast('✓ AI har analyserat mailet!');
+
+  } catch(e) {
+    toast('Fel: '+e.message);
+  } finally {
+    btn.textContent = '🤖 Analysera med AI';
+    btn.disabled = false;
+  }
+}
+
+async function sparaAnbudFranMail(){
+  const forfraganId = document.getElementById('mail-forfragan-select').value;
+  if(!forfraganId){ toast('Välj en förfrågan först'); return; }
+
+  const partnerSel = document.getElementById('mp-partner-select');
+  const partnerInp = document.getElementById('mp-partner');
+  const partner_namn = partnerSel?.value && partnerSel.value !== '__manuell__' && partnerSel.value !== ''
+    ? partnerSel.value.split('||')[0]
+    : partnerInp?.value.trim() || '';
+  const partner_email = document.getElementById('mp-email').value.trim();
+  const pris = parseFloat(document.getElementById('mp-pris').value) || 0;
+  const valuta = document.getElementById('mp-valuta').value;
+  const leveranstid = document.getElementById('mp-leveranstid').value;
+  const meddelande = document.getElementById('mp-meddelande').value;
+
+  if(!partner_namn || !pris){ toast('Partner och pris krävs'); return; }
+
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'};
+  const resp = await fetch(SB_URL+'/rest/v1/anbud', {
+    method: 'POST',
+    headers: h,
+    body: JSON.stringify({
+      forfragan_id: forfraganId,
+      partner_namn, partner_email, pris, valuta, leveranstid, meddelande,
+      status: 'inkommen'
+    })
+  });
+
+  if(!resp.ok){ toast('Fel: '+resp.status); return; }
+
+  // Uppdatera status på förfrågan till skickad om den är ny
+  const f = allForfragan.find(x=>x.id===forfraganId);
+  if(f && f.status === 'ny'){
+    await fetch(SB_URL+'/rest/v1/forfragan?id=eq.'+forfraganId, {method:'PATCH',headers:h,body:JSON.stringify({status:'skickad'})});
+  }
+
+  toast('✓ Anbud sparat från mail!');
+  stangModal('mail-parse-overlay');
+  await laddaAll();
+}
+
+function oppnaInstallningar(){
+  const modal = document.createElement('div');
+  modal.id = 'installningar-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px;width:360px;font-family:var(--font)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:20px">⚙️ Inställningar</div>
+      
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:#888;text-transform:uppercase;margin-bottom:10px">Data</div>
+        <button onclick="laddaNerBackup();document.getElementById('installningar-overlay').remove()" 
+          style="width:100%;text-align:left;background:#f5f5f0;border:1px solid #e8e8e2;border-radius:8px;padding:10px 14px;font-size:13px;cursor:pointer;font-family:var(--font);margin-bottom:8px">
+          💾 Ladda ner backup (JSON)
+        </button>
+        <button onclick="bekraftaRensa()" 
+          style="width:100%;text-align:left;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:13px;cursor:pointer;font-family:var(--font);color:#dc2626">
+          🗑 Rensa all testdata
+        </button>
+      </div>
+
+      <button onclick="document.getElementById('installningar-overlay').remove()" 
+        style="width:100%;background:#f5f5f0;border:none;border-radius:8px;padding:10px;font-size:13px;cursor:pointer;font-family:var(--font);margin-top:4px">
+        Stäng
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+function bekraftaRensa(){
+  document.getElementById('installningar-overlay').remove();
+  if(confirm('⚠️ VARNING: Detta raderar ALL testdata permanent.\n\nÄr du helt säker?')){
+    if(confirm('Sista chansen — Rensa all testdata?')){
+      rensaTestdata();
+    }
+  }
+}
+
+async function laddaNerBackup(){
+  toast('⏳ Hämtar data...');
+  const h = {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+  const tabeller = ['forfragan','anbud','erbjudande','bokningar','transport_kunder','partners','kund_anvandare','audit_log'];
+  
+  const backup = { exporterad: new Date().toISOString(), tabeller:{} };
+  
+  for(const tabell of tabeller){
+    try {
+      const resp = await fetch(SB_URL+'/rest/v1/'+tabell+'?select=*&limit=10000', {headers:h});
+      backup.tabeller[tabell] = await resp.json();
+    } catch(e){ backup.tabeller[tabell] = []; }
+  }
+
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const datum = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = `simptra-backup-${datum}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Backup nedladdad!');
+}
+
+async function rensaTestdata(){
+  if(!confirm('Radera ALLA förfrågningar, anbud och erbjudanden? Partners behålls.')) return;
+  const hR={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+  await fetch(SB_URL+'/rest/v1/erbjudande?id=neq.00000000-0000-0000-0000-000000000000',{method:'DELETE',headers:hR});
+  await fetch(SB_URL+'/rest/v1/anbud?id=neq.00000000-0000-0000-0000-000000000000',{method:'DELETE',headers:hR});
+  await fetch(SB_URL+'/rest/v1/forfragan_partners?id=neq.00000000-0000-0000-0000-000000000000',{method:'DELETE',headers:hR});
+  await fetch(SB_URL+'/rest/v1/forfragan?id=neq.00000000-0000-0000-0000-000000000000',{method:'DELETE',headers:hR});
+  toast('🗑 All testdata raderad!');
+  await laddaAll();
+}
+
+// Realtime updates
+sb.channel('forfragan-changes').on('postgres_changes',{event:'*',schema:'public',table:'forfragan'},()=>laddaAll()).subscribe();
+sb.channel('anbud-changes').on('postgres_changes',{event:'*',schema:'public',table:'anbud'},()=>laddaAll()).subscribe();
+sb.channel('erbjudande-changes').on('postgres_changes',{event:'*',schema:'public',table:'erbjudande'},()=>laddaAll()).subscribe();
+</script>
+</body>
+</html>
